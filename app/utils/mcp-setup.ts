@@ -425,17 +425,17 @@ export function createMcpServer() {
             try {
                 const data = await apiRequest<any>("/scrapers/status");
 
-                if (!data || !data.accounts || data.accounts.length === 0) {
+                if (!data || !data.accountSyncStatus || data.accountSyncStatus.length === 0) {
                     return {
                         content: [{ type: "text", text: "No accounts configured." }],
                     };
                 }
 
-                const accounts = data.accounts.map((acc: any) => {
-                    const lastSync = acc.last_scrape_time
-                        ? new Date(acc.last_scrape_time).toLocaleString("he-IL")
+                const accounts = data.accountSyncStatus.map((acc: any) => {
+                    const lastSync = acc.last_synced_at
+                        ? new Date(acc.last_synced_at).toLocaleString("he-IL")
                         : "Never";
-                    const status = acc.last_scrape_status === "success" ? "✅" : acc.last_scrape_status === "failed" ? "❌" : "⏳";
+                    const status = acc.last_synced_at ? "✅" : "⏳";
                     const name = acc.nickname || acc.vendor;
                     return `${status} ${name}: Last sync ${lastSync}`;
                 });
@@ -445,8 +445,8 @@ export function createMcpServer() {
                     "",
                     ...accounts,
                     "",
-                    data.autoSyncEnabled
-                        ? `⚙️ Auto-sync: Enabled (every ${data.syncInterval} hours)`
+                    data.settings?.enabled
+                        ? `⚙️ Auto-sync: Enabled (syncs at ${data.settings.syncHour}:00)`
                         : "⚙️ Auto-sync: Disabled",
                 ].join("\n");
 

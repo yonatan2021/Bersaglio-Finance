@@ -1,6 +1,6 @@
 ---
 name: nudlers-financial-analyst
-description: "Financial analyst workflows for Nudlers MCP: step-by-step guidance for answering financial queries, budget analysis, subscription management, and trend insights using the 12 MCP tools. Depends on nudlers-data-access for tool parameters."
+description: "Financial analyst workflows for Nudlers MCP: step-by-step guidance for answering financial queries, budget analysis, subscription management, and trend insights using the 27 MCP tools. Depends on nudlers-data-access for tool parameters."
 version: 1.0.0
 author: Yoni Gelfman
 license: MIT
@@ -100,6 +100,12 @@ If there are overages, suggest:
 ### Step 5: If no budgets are set
 Tell the user: "לא הוגדרו תקציבים. ניתן להגדיר תקציב לכל קטגוריה ב-Nudlers." Do not invent budget numbers.
 
+### Step 6: Adjusting Budgets
+If the user wants to adjust/update a budget limit or set a new one:
+- Category budget: call `set_category_budget` with `category` and `budgetLimit` (e.g. `set_category_budget(category: "Dining", budgetLimit: 1000)`).
+- Total budget: call `set_total_budget` with `budgetLimit` (e.g. `set_total_budget(budgetLimit: 5000)`).
+Always confirm with the user before setting a budget.
+
 ---
 
 ## Workflow 3: Subscription Management
@@ -191,6 +197,99 @@ Call `get_category_breakdown` for 3 consecutive billing cycles. Show a simple tr
 ```
 • מסעדות: ₪900 → ₪1,100 → ₪1,400 (מגמת עלייה)
 ```
+
+---
+
+## Workflow 5: Anomalies & suspicious activities
+
+Use when the user asks: "יש תנועות מוזרות?", "תבדוק לי חריגות", "האם יש משהו חשוד בחשבון?", "יש עסקאות כפולות?"
+
+### Step 1: Fetch anomalies
+Call `get_anomalies` with `status: "open"`.
+
+### Step 2: Present anomalies
+Report all detected anomalies clearly in Hebrew:
+- ID and type of anomaly
+- Description (vendor name, severity level, why it is an anomaly)
+- E.g.: `• [חריגה 101] חיוב כפול ב-Wolt (severity: HIGH): זוהו שני חיובים זהים של ₪79.90 באותו יום.`
+
+### Step 3: Action plan
+For each anomaly, ask the user if they want to:
+- Acknowledge it (mark as normal/known): Call `update_anomaly_status` with `status: "acknowledged"`
+- Dismiss it: Call `update_anomaly_status` with `status: "dismissed"`
+- Proactively run the anomaly detection scanner if they synced new data: Call `trigger_anomaly_evaluation`.
+
+---
+
+## Workflow 6: Smart Categorization & Rules
+
+Use when the user corrects a transaction category, wants to assign a new category to a merchant, or manage categorization rules.
+
+### Case A: Single transaction update
+If the user corrects a single transaction category:
+- Call `update_transaction_details` with the `id`, `category` (and optionally `notes`/`isFavorite`).
+- **⚠️ Safety Guard**: Remember that core transaction amounts (price) or dates cannot be modified. Report only metadata updates.
+
+### Case B: Assign category by description and manage rules
+If the user wants to categorize all transactions matching a specific merchant name/description:
+1. Explain to the user that they can apply this change retroactively and create a rule for all future transactions:
+   - "אני יכול לעדכן את כל עסקאות '[description]' לקטגוריה '[newCategory]'. האם תרצה להחיל זאת גם כחוק קבוע עבור עסקאות עתידיות?"
+2. Call `update_category_by_description` with `createRule: true` if the user wants a permanent rule (always ask first!). Set to `false` if they only want a one-time retroactive cleanup.
+
+### Case C: Managing custom rules
+- To view existing rules: Call `list_categorization_rules`
+- To manually add a rule: Call `create_categorization_rule`
+- To delete a rule:
+  - **⚠️ Confirmation Protocol**: Always request the user's explicit confirmation before calling `delete_categorization_rule`, as this is irreversible. E.g. "האם אתה בטוח שברצונך למחוק את חוק הקטלוג [ID]?"
+
+### Case D: Bulk Rule Application
+If the user wants to apply all active categorization rules retroactively to their entire database history:
+1. **⚠️ Explanation Protocol**: Before calling `apply_categorization_rules`, the agent MUST explain to the user what is about to happen. This is a heavy operation that runs all active rules on all historical transactions in the database, potentially updating categories in bulk.
+2. E.g.: "אני עומד להריץ את כל חוקי הסיווג הפעילים על כל העסקאות בהיסטוריית החשבון. זו פעולה כבדה שעשויה לשנות ולעדכן קטגוריות עבור כמות גדולה של עסקאות בעבר."
+3. **Note**: Explicit user confirmation/approval is NOT strictly mandatory for this tool, but explaining the impact to the user beforehand is required. Call `apply_categorization_rules` right after delivering this explanation.
+
+---
+
+## Workflow 7: Sync Control & Security
+
+Use when the user asks: "תסנכרן לי את הבנק / כרטיסי אשראי", "תמשוך נתונים חדשים", "האם הכל מעודכן?"
+
+### Step 1: Check Vault Status
+Before triggering a sync, you must verify if the application credentials vault is unlocked:
+- Call `get_vault_status`.
+- If `locked: true`: Explain to the user in Hebrew that the vault is currently locked. Inform them that scrapers cannot run when the vault is locked and guide them to unlock the vault manually via the Nudlers Web UI. E.g.:
+  "הכספת של האפליקציה נעולה כעת. כדי לסנכרן את החשבונות, עליך לפתוח את הכספת ידנית דרך ממשק המשתמש בדפדפן (הסוכן אינו רשאי לגשת למפתחות הכספת או להזין ססמאות סודיות)."
+- If `locked: false`: Proceed to Step 2.
+
+### Step 2: Trigger Sync
+- Call `trigger_full_sync` (optionally passing `daysBack`).
+- This is a streaming Server-Sent Events (SSE) operation. The MCP client will wait and compile the final summary stats for you.
+
+### Step 3: Handle and Report Partial Failures
+**⚠️ Critical**: Do NOT simply say "הסינכרון הושלם בהצלחה" if some accounts failed. Parse the `accounts` status list and summary stats returned by the tool:
+- If all accounts succeeded:
+  Report that the synchronization was fully successful for all accounts and list the statistics:
+  ```
+  ✅ הסינכרון הושלם בהצלחה עבור כל החשבונות!
+  
+  📋 נתוני הסינכרון:
+  • עסקאות חדשות שנשמרו: X
+  • עסקאות שעודכנו: Y
+  • משך הסינכרון: Z שניות
+  ```
+- If there is a **partial failure** (some accounts succeeded, some failed):
+  Report the status of each account explicitly, highlighting the failed ones with ❌:
+  ```
+  ⚠️ סנכרון הושלם עם שגיאות חלקיות:
+  • בנק הפועלים: ✅ סונכרן בהצלחה
+  • כרטיס Max אשראי: ❌ נכשל (פירוט השגיאה: [הודעת שגיאה / פג תוקף חיבור])
+  
+  📋 נתוני סינכרון חלקיים:
+  • עסקאות חדשות שנשמרו: X
+  • עסקאות שעודכנו: Y
+  • משך הסינכרון: Z שניות
+  ```
+  Guide the user on what to do (e.g. check credentials or reconnect the failed account in the Web UI).
 
 ---
 

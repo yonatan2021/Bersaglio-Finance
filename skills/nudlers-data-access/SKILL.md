@@ -1,6 +1,6 @@
 ---
 name: nudlers-data-access
-description: "Complete reference for Nudlers MCP tools: 12 financial tools for Israeli bank/credit data. Covers all parameters, date formats, billing cycle concept, quick-lookup table, and error handling. Use this skill whenever you need to know which MCP tool to call and with what parameters."
+description: "Complete reference for Nudlers MCP tools: 27 financial tools for Israeli bank/credit data. Covers all parameters, date formats, billing cycle concept, quick-lookup table, and error handling. Use this skill whenever you need to know which MCP tool to call and with what parameters."
 version: 1.0.0
 author: Yoni Gelfman
 license: MIT
@@ -13,7 +13,7 @@ metadata:
 
 # Nudlers MCP — Data Access Reference
 
-Nudlers is a personal finance app for Israeli banks and credit cards. It exposes an MCP server with 12 tools for querying transactions, budgets, subscriptions, and financial projections.
+Nudlers is a personal finance app for Israeli banks and credit cards. It exposes an MCP server with 27 tools for querying transactions, budgets, subscriptions, financial projections, sync controls, anomalies, and rules.
 
 ## Connection
 
@@ -263,6 +263,223 @@ Add a manual transaction (cash, transfers, expenses not captured by scrapers).
 
 ---
 
+### 13. `trigger_full_sync`
+
+Run a full synchronization scraper run for all active bank accounts and credit cards to fetch the latest transactions.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `daysBack` | number | no | `30` | Number of days back to sync |
+
+**Returns:** A summary status of each account synchronized, plus execution stats (saved transactions, updated transactions, duration).
+
+**⚠️ Important Handling**: The SSE stream outputs details of which accounts succeeded and which failed, along with synchronization statistics. Do not report a general "sync succeeded" if some accounts failed. Report the status of each connected account explicitly, along with the stats (saved transactions, updated transactions, duration) clearly.
+
+**Use when:** User asks to sync data, updates are missing, or the sync status check shows data is stale.
+
+---
+
+### 14. `get_vault_status`
+
+Check if the application credentials vault is locked or unlocked. Scrapers cannot run when the vault is locked.
+
+No parameters.
+
+**Returns:** Vault lock status (`locked: true/false`) and initialization status.
+
+**Use when:** Checking status before calling `trigger_full_sync`, or diagnosing scraper/sync failures.
+
+---
+
+### 15. `get_anomalies`
+
+Get a list of detected financial anomalies (unusual activity, spikes, duplicate charges, etc.).
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `status` | enum | no | `"open"` | `"open"` \| `"acknowledged"` \| `"dismissed"` \| `"normal"` |
+
+**Returns:** List of anomalies, including severity, title, and descriptive body text.
+
+**Use when:** User asks about unusual charges, suspicious transactions, or general financial anomalies.
+
+---
+
+### 16. `trigger_anomaly_evaluation`
+
+Manually trigger the anomaly detection engine over all transactions to check for new discrepancies. No parameters.
+
+**Returns:** Summary containing open anomalies count, evaluated transactions count, and new anomalies detected.
+
+**Use when:** User asks to scan or check for anomalies, or after a new data sync is completed.
+
+---
+
+### 17. `update_anomaly_status`
+
+Update the status of an anomaly (e.g. acknowledge or dismiss it).
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | number | **yes** | — | The ID of the anomaly |
+| `status` | enum | **yes** | — | `"acknowledged"` \| `"dismissed"` \| `"normal"` |
+
+**Returns:** Confirmation message.
+
+**Use when:** User wants to dismiss or acknowledge a warning/anomaly.
+
+---
+
+### 18. `set_category_budget`
+
+Set or update the budget limit for a specific spending category.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `category` | string | **yes** | — | Category name |
+| `budgetLimit` | number | **yes** | — | The budget limit in ILS |
+
+**Returns:** Confirmation message with the updated budget limit.
+
+**Use when:** User wants to set or adjust a budget for a category.
+
+---
+
+### 19. `set_total_budget`
+
+Set or update the total overall monthly budget limit.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `budgetLimit` | number | **yes** | — | Total budget limit in ILS (> 0) |
+
+**Returns:** Confirmation message.
+
+**Use when:** User wants to set/change their overall monthly spending limit.
+
+---
+
+### 20. `get_total_budget`
+
+Get the overall monthly budget limit. No parameters.
+
+**Returns:** Current monthly budget limit, or indicates if it is not set.
+
+**Use when:** Reviewing budget guidelines or comparing total spending to the overall budget.
+
+---
+
+### 21. `update_category_by_description`
+
+Update the category for all past transactions matching a description, and optionally create a categorization rule for future occurrences.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `description` | string | **yes** | — | Exact description substring to match |
+| `newCategory` | string | **yes** | — | New category name |
+| `createRule` | boolean | no | `true` | Create rule for future transactions (Hermes should confirm with user) |
+
+**Returns:** Summary of transactions updated and whether a rule was created.
+
+**⚠️ Rules Protocol**: By default, `createRule` is true. Hermes should explain this to the user and ask if they want this change to apply automatically to all future transactions as a permanent rule.
+
+**Use when:** User corrects a categorization for a recurring merchant description.
+
+---
+
+### 22. `list_categorization_rules`
+
+List all active custom transaction categorization rules. No parameters.
+
+**Returns:** List of active rules containing rule ID, name pattern to match, target category, and status.
+
+**Use when:** User asks what rules are active, or when auditing categorization behavior.
+
+---
+
+### 23. `create_categorization_rule`
+
+Manually create a new transaction categorization rule to auto-classify future transactions.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `namePattern` | string | **yes** | — | Description substring pattern to match |
+| `targetCategory` | string | **yes** | — | Category name to assign |
+
+**Returns:** Confirmation message with the new rule ID.
+
+**Use when:** User wants to set up a new auto-categorization rule.
+
+---
+
+### 24. `delete_categorization_rule`
+
+Delete a custom transaction categorization rule.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | number | **yes** | — | The ID of the rule to delete |
+
+**⚠️ Caution**: This operation is irreversible. Hermes must request confirmation from the user before executing this tool.
+
+**Use when:** User requests to delete/remove an auto-categorization rule.
+
+---
+
+### 25. `apply_categorization_rules`
+
+Run all active categorization rules over all transactions in the database. No parameters.
+
+**⚠️ Warning**: This is a heavy database operation that scans all historical transactions and applies active rules to them. It can significantly change past transaction categories.
+Before invoking this tool, Hermes **MUST explain to the user** what is about to happen (that all historical transactions will be re-evaluated under current rules, potentially updating categories in bulk, which is a heavy DB operation). Explicit user confirmation/approval is NOT strictly mandatory, but explaining the impact to the user beforehand is required.
+
+**Use when:** User adds/modifies rules and wants to apply them retroactively to their history.
+
+---
+
+### 26. `update_transaction_details`
+
+Update metadata of an existing transaction (such as category, notes, or favorite status).
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | **yes** | — | Transaction ID in format `identifier\|vendor` |
+| `category` | string | no | — | New category name |
+| `isFavorite` | boolean | no | — | Favorite status |
+| `notes` | string | no | — | Personal notes |
+
+**⚠️ Secure Guards**: You cannot edit core transaction amounts (price) or transaction dates. These fields are protected and not accepted by this tool.
+
+**Use when:** User wants to tag a transaction, set favorite status, add custom notes, or change the category of a single specific transaction.
+
+---
+
+### 27. `manage_non_recurring_exclusion`
+
+Mark or unmark a transaction description as non-recurring to exclude/include it in subscription analysis.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `action` | enum | **yes** | — | `"add"` \| `"remove"` |
+| `name` | string | **yes** | — | Transaction description |
+| `accountNumber` | string | no | — | Specific bank account/card number |
+
+**Returns:** Confirmation message.
+
+**Use when:** Excluding one-off transactions that are wrongly identified as subscriptions, or restoring them.
+
+---
+
 ## Quick-Lookup Table
 
 | User question | Tool to call | Key params |
@@ -287,6 +504,21 @@ Add a manual transaction (cash, transfers, expenses not captured by scrapers).
 | "תשווה לחודש שעבר" | `get_category_breakdown` × 2 | current + previous billingCycle |
 | "כמה שילמתי ל-YES/HOT?" | `search_transactions` | `query: "yes"` or `"hot"` |
 | "הוצאות לפי כרטיס" | `get_monthly_summary` | `groupBy: "last4digits"` |
+| "סנכרן את החשבונות שלי / תמשוך נתונים חדשים" | `trigger_full_sync` | check vault lock status first! |
+| "האם הכספת נעולה? / מה מצב הכספת?" | `get_vault_status` | — |
+| "האם יש עסקאות חריגות? / תבדוק חריגות" | `get_anomalies` | `status: "open"` |
+| "תריץ בדיקה של חריגות/אנומליות" | `trigger_anomaly_evaluation` | — |
+| "תאשר את החריגה הזו / תתעלם מחריגה 101" | `update_anomaly_status` | `id: 101`, `status: "acknowledged"` / `"dismissed"` |
+| "תגדיר תקציב של 1000 ש"ח למסעדות" | `set_category_budget` | `category: "Dining"`, `budgetLimit: 1000` |
+| "תעדכן את התקציב הכללי ל-5000 ש"ח" | `set_total_budget` | `budgetLimit: 5000` |
+| "מה התקציב הכללי שלי החודש?" | `get_total_budget` | — |
+| "תשנה את כל עסקאות וולט למסעדות" | `update_category_by_description` | `description: "Wolt"`, `newCategory: "Dining"`, ask user for rule |
+| "אילו חוקי קטלוג קיימים?" | `list_categorization_rules` | — |
+| "תיצור חוק קטלוג חדש עבור פנגו לתחבורה" | `create_categorization_rule` | `namePattern: "Pango"`, `targetCategory: "Transportation"` |
+| "תמחק את חוק הקטלוג 5" | `delete_categorization_rule` | `id: 5` (confirm first!) |
+| "תחיל את כל החוקים על העסקאות הישנות" | `apply_categorization_rules` | explain potential impacts first! |
+| "תעדכן את הקטגוריה של העסקה הזו לבידור / תוסיף הערה לעסקה" | `update_transaction_details` | `id: "ID"`, category/notes/isFavorite only (no price/date) |
+| "אל תספור את נטפליקס כמנוי קבוע / תספור את X כמנוי" | `manage_non_recurring_exclusion` | `action: "add"` / `"remove"`, `name: "netflix"` |
 
 ---
 
@@ -313,6 +545,12 @@ Add a manual transaction (cash, transfers, expenses not captured by scrapers).
 1. `get_recurring_payments` → see all recurring and installments
 2. `search_transactions` for specific service if user wants details
 3. Total up monthly cost manually
+
+### Pattern 6: Running a Synchronization
+1. `get_vault_status` → verify if the vault is unlocked
+2. If vault is locked, ask the user to unlock it in the Nudlers web app (Hermes cannot unlock the vault).
+3. If vault is unlocked, call `trigger_full_sync`
+4. Parse the SSE response summary, and explicitly report individual account status successes and failures.
 
 ---
 

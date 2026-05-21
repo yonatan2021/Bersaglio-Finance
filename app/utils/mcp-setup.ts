@@ -37,6 +37,93 @@ function formatCurrency(amount: number): string {
     }).format(amount);
 }
 
+// Helper function to consume SSE stream from sync-all-stream
+async function consumeSseStream(
+    endpoint: string,
+    body: any
+): Promise<any> {
+    const url = `${API_BASE}${endpoint}`;
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API request failed: ${response.status} - ${errorText}`);
+    }
+
+    if (!response.body) {
+        throw new Error("No response body received from sync stream");
+    }
+
+    const reader = (response.body as any).getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let accountsList: Array<{ id: number; nickname: string; vendor: string }> = [];
+    let accountsStatus: Array<{ id: number; nickname: string; success: boolean; error?: string }> = [];
+    let finalSummary: any = null;
+
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            // Save the last partial line back to the buffer
+            buffer = lines.pop() || "";
+
+            let currentEvent = "";
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith("event:")) {
+                    currentEvent = trimmed.replace("event:", "").trim();
+                } else if (trimmed.startsWith("data:")) {
+                    const dataStr = trimmed.replace("data:", "").trim();
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (currentEvent === "queue") {
+                            accountsList = data.accounts || [];
+                        } else if (currentEvent === "account_complete") {
+                            const acc = accountsList.find(a => a.id === data.id);
+                            accountsStatus.push({
+                                id: data.id,
+                                nickname: acc ? acc.nickname : `Account ${data.id}`,
+                                success: true,
+                            });
+                        } else if (currentEvent === "account_error") {
+                            const acc = accountsList.find(a => a.id === data.id);
+                            accountsStatus.push({
+                                id: data.id,
+                                nickname: acc ? acc.nickname : `Account ${data.id}`,
+                                success: false,
+                                error: data.message,
+                            });
+                        } else if (currentEvent === "complete") {
+                            finalSummary = data.summary;
+                        }
+                    } catch (e) {
+                        // Ignore parsing errors for individual debug lines
+                    }
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    return {
+        success: true,
+        accounts: accountsStatus,
+        summary: finalSummary,
+    };
+}
+
 export function createMcpServer() {
     const server = new McpServer({
         name: "nudlers",
@@ -632,7 +719,7 @@ export function createMcpServer() {
             description: "Add a manual expense or income transaction. Use this for cash purchases, transfers, or transactions not captured by bank scrapers.",
             inputSchema: {
                 name: z.string().min(1).describe("Transaction description (e.g., 'Coffee at local cafe', 'Grocery shopping')"),
-                price: z.number().describe("Amount in ILS. Positive for expenses, negative for income."),
+                price: z.number().describe("Amount in ILS. Negative for expenses, positive for income."),
                 date: z.string().describe("Transaction date in YYYY-MM-DD format"),
                 category: z.string().optional().describe("Category name (e.g., 'Dining', 'Groceries', 'Transportation')"),
                 memo: z.string().optional().describe("Additional notes or details about the transaction"),
@@ -664,7 +751,7 @@ export function createMcpServer() {
                     const txn = response.transaction;
                     const formattedDate = new Date(txn.date).toLocaleDateString("he-IL");
                     const formattedAmount = formatCurrency(Math.abs(txn.price));
-                    const type = txn.price >= 0 ? "expense" : "income";
+                    const type = txn.price < 0 ? "expense" : "income";
 
                     const summary = [
                         `✅ Manual ${type} added successfully!`,
@@ -823,6 +910,473 @@ export function createMcpServer() {
             } catch (error) {
                 return {
                     content: [{ type: "text", text: `Error fetching balance projection: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Trigger Full Sync
+    // ============================================================================
+    server.registerTool(
+        "trigger_full_sync",
+        {
+            description: "Run a full synchronization scraper run for all active bank accounts and credit cards to fetch the latest transactions.",
+            inputSchema: {
+                daysBack: z
+                    .number()
+                    .optional()
+                    .describe("Number of days back to sync (default: 30)"),
+            },
+        },
+        async ({ daysBack }) => {
+            try {
+                const result = await consumeSseStream("/scrapers/sync-all-stream", { daysBack: daysBack || 30 });
+                let text = `🔄 Sync completed!\n`;
+                text += `Synced: ${result.accounts.length} accounts\n`;
+                result.accounts.forEach((acc: any) => {
+                    text += `• ${acc.nickname}: ${acc.success ? "✅ Success" : `❌ Failed (${acc.error})`}\n`;
+                });
+                if (result.summary) {
+                    text += `\n--- Summary ---\n`;
+                    text += `💳 Saved Transactions: ${result.summary.savedTransactions}\n`;
+                    text += `🔄 Updated Transactions: ${result.summary.updatedTransactions}\n`;
+                    text += `⏱️ Duration: ${result.summary.durationSeconds} seconds\n`;
+                }
+                return {
+                    content: [{ type: "text", text }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error triggering sync: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Get Vault Status
+    // ============================================================================
+    server.registerTool(
+        "get_vault_status",
+        {
+            description: "Check if the application credentials vault is locked or unlocked. Scrapers cannot run when the vault is locked.",
+        },
+        async () => {
+            try {
+                const data = await apiRequest<any>("/vault/status");
+                const text = [
+                    `🔒 Vault Status:`,
+                    `• Locked: ${data.locked ? "Yes 🔴" : "No 🟢"}`,
+                    `• Initialized: ${data.initialized ? "Yes" : "No"}`,
+                ].join("\n");
+                return {
+                    content: [{ type: "text", text }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error checking vault status: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Get Anomalies
+    // ============================================================================
+    server.registerTool(
+        "get_anomalies",
+        {
+            description: "Get list of detected financial anomalies (unusual activity, spikes, duplicates, etc.).",
+            inputSchema: {
+                status: z
+                    .enum(["open", "acknowledged", "dismissed", "normal"])
+                    .optional()
+                    .describe("Status to filter anomalies by (default: 'open')"),
+            },
+        },
+        async ({ status }) => {
+            try {
+                const statusParam = status || "open";
+                const data = await apiRequest<any>(`/anomalies?status=${statusParam}`);
+                const anomalies = data.anomalies || [];
+                if (anomalies.length === 0) {
+                    return {
+                        content: [{ type: "text", text: `No anomalies with status "${statusParam}" found.` }],
+                    };
+                }
+                const lines = anomalies.map((a: any) => {
+                    return `• [ID ${a.id}] ${a.title} (${a.severity.toUpperCase()}): ${a.body}`;
+                });
+                const text = [
+                    `⚠️ Financial Anomalies (${statusParam})`,
+                    "",
+                    ...lines,
+                ].join("\n");
+                return {
+                    content: [{ type: "text", text }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error checking anomalies: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Trigger Anomaly Evaluation
+    // ============================================================================
+    server.registerTool(
+        "trigger_anomaly_evaluation",
+        {
+            description: "Manually run the anomaly detection engine over all transactions to find any new discrepancies.",
+        },
+        async () => {
+            try {
+                const data = await apiRequest<any>("/anomalies", { method: "POST" });
+                const text = [
+                    `⚙️ Anomaly evaluation complete!`,
+                    `• Open anomalies: ${data.openAnomaliesCount || 0}`,
+                    `• Evaluated transactions: ${data.evaluatedCount || 0}`,
+                    `• New anomalies detected: ${data.newCount || 0}`,
+                ].join("\n");
+                return {
+                    content: [{ type: "text", text }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error triggering anomaly evaluation: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Update Anomaly Status
+    // ============================================================================
+    server.registerTool(
+        "update_anomaly_status",
+        {
+            description: "Mark an anomaly as acknowledged, dismissed, or normal.",
+            inputSchema: {
+                id: z.number().describe("The ID of the anomaly to update"),
+                status: z
+                    .enum(["acknowledged", "dismissed", "normal"])
+                    .describe("The new status to set"),
+            },
+        },
+        async ({ id, status }) => {
+            try {
+                await apiRequest<any>(`/anomalies/${id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status }),
+                });
+                return {
+                    content: [{ type: "text", text: `Anomaly ${id} status successfully updated to "${status}".` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error updating anomaly: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Set Category Budget
+    // ============================================================================
+    server.registerTool(
+        "set_category_budget",
+        {
+            description: "Set or update the budget limit for a specific spending category.",
+            inputSchema: {
+                category: z.string().describe("The category name to set budget for (e.g., 'Dining', 'Groceries')"),
+                budgetLimit: z.number().describe("The budget limit amount in ILS"),
+            },
+        },
+        async ({ category, budgetLimit }) => {
+            try {
+                const res = await apiRequest<any>("/budgets", {
+                    method: "POST",
+                    body: JSON.stringify({ category, budget_limit: budgetLimit }),
+                });
+                return {
+                    content: [{ type: "text", text: `Budget limit for category "${res.category}" set to ${formatCurrency(res.budget_limit)}.` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error setting category budget: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Set Total Budget
+    // ============================================================================
+    server.registerTool(
+        "set_total_budget",
+        {
+            description: "Set or update the total overall monthly budget limit.",
+            inputSchema: {
+                budgetLimit: z.number().describe("The total monthly budget limit in ILS (must be greater than 0)"),
+            },
+        },
+        async ({ budgetLimit }) => {
+            try {
+                const res = await apiRequest<any>("/reports/total-budget", {
+                    method: "POST",
+                    body: JSON.stringify({ budget_limit: budgetLimit }),
+                });
+                return {
+                    content: [{ type: "text", text: `Total monthly budget limit set to ${formatCurrency(res.budget_limit)}.` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error setting total budget: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Get Total Budget
+    // ============================================================================
+    server.registerTool(
+        "get_total_budget",
+        {
+            description: "Get the total overall monthly budget limit configured in the system.",
+        },
+        async () => {
+            try {
+                const res = await apiRequest<any>("/reports/total-budget");
+                if (!res.is_set) {
+                    return {
+                        content: [{ type: "text", text: `No total monthly budget limit has been set yet.` }],
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: `Total monthly budget limit is: ${formatCurrency(res.budget_limit)}` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error getting total budget: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Update Category By Description
+    // ============================================================================
+    server.registerTool(
+        "update_category_by_description",
+        {
+            description: "Update the category for all transactions matching a specific description, and optionally create a categorization rule for future occurrences.",
+            inputSchema: {
+                description: z.string().describe("Exact description of the transactions to update"),
+                newCategory: z.string().describe("The new category to assign"),
+                createRule: z
+                    .boolean()
+                    .optional()
+                    .default(true)
+                    .describe("Create a rule for future transactions with this description (default: true). ALWAYS confirm with user before setting to true."),
+            },
+        },
+        async ({ description, newCategory, createRule }) => {
+            try {
+                const res = await apiRequest<any>("/categories/update-by-description", {
+                    method: "POST",
+                    body: JSON.stringify({ description, newCategory, createRule: createRule !== false }),
+                });
+                const text = [
+                    `🏷️ Category updated successfully!`,
+                    `• Description: "${description}"`,
+                    `• Assigned Category: "${newCategory}"`,
+                    `• Transactions updated: ${res.transactionsUpdated}`,
+                    `• Rule created: ${res.ruleCreated ? "Yes ✅" : "No"}`,
+                ].join("\n");
+                return {
+                    content: [{ type: "text", text }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error updating category: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: List Categorization Rules
+    // ============================================================================
+    server.registerTool(
+        "list_categorization_rules",
+        {
+            description: "List all custom transaction categorization rules currently active in the system.",
+        },
+        async () => {
+            try {
+                const rules = await apiRequest<any[]>("/categories/rules");
+                if (rules.length === 0) {
+                    return {
+                        content: [{ type: "text", text: "No categorization rules defined." }],
+                    };
+                }
+                const lines = rules.map((r: any) => `• [ID ${r.id}] "${r.name_pattern}" → "${r.target_category}" (${r.is_active ? "Active" : "Inactive"})`);
+                return {
+                    content: [{ type: "text", text: ["📋 Categorization Rules:", "", ...lines].join("\n") }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error listing rules: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Create Categorization Rule
+    // ============================================================================
+    server.registerTool(
+        "create_categorization_rule",
+        {
+            description: "Manually create a new transaction categorization rule to auto-classify future transactions.",
+            inputSchema: {
+                namePattern: z.string().describe("Description substring pattern to match (e.g., 'Yellow')"),
+                targetCategory: z.string().describe("Category name to assign (e.g., 'Transportation')"),
+            },
+        },
+        async ({ namePattern, targetCategory }) => {
+            try {
+                const res = await apiRequest<any>("/categories/rules", {
+                    method: "POST",
+                    body: JSON.stringify({ name_pattern: namePattern, target_category: targetCategory }),
+                });
+                return {
+                    content: [{ type: "text", text: `Rule created successfully: [ID ${res.id}] "${res.name_pattern}" → "${res.target_category}".` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error creating rule: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Delete Categorization Rule
+    // ============================================================================
+    server.registerTool(
+        "delete_categorization_rule",
+        {
+            description: "Delete a custom transaction categorization rule by its ID. Caution: Irreversible operation. Hermes must prompt the user for confirmation first.",
+            inputSchema: {
+                id: z.number().describe("The ID of the categorization rule to delete"),
+            },
+        },
+        async ({ id }) => {
+            try {
+                await apiRequest<any>("/categories/rules", {
+                    method: "DELETE",
+                    body: JSON.stringify({ id }),
+                });
+                return {
+                    content: [{ type: "text", text: `Categorization rule ${id} deleted successfully.` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error deleting rule: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Apply Categorization Rules
+    // ============================================================================
+    server.registerTool(
+        "apply_categorization_rules",
+        {
+            description: "Run all active categorization rules over all transactions in the database. Note: This bulk operation might alter many transaction categories.",
+        },
+        async () => {
+            try {
+                const res = await apiRequest<any>("/categories/apply-rules", { method: "POST" });
+                return {
+                    content: [{ type: "text", text: `Categorization rules applied successfully. Updated ${res.transactionsUpdated} transactions using ${res.rulesApplied} rules.` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error applying rules: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Update Transaction Details
+    // ============================================================================
+    server.registerTool(
+        "update_transaction_details",
+        {
+            description: "Update metadata details of an existing transaction (such as category, notes, or favorite status). Core banking details like price/date are protected and cannot be changed.",
+            inputSchema: {
+                id: z.string().describe("Transaction ID in format: identifier|vendor"),
+                category: z.string().optional().describe("New category to assign"),
+                isFavorite: z.boolean().optional().describe("Set favorite status"),
+                notes: z.string().optional().describe("Custom personal notes for the transaction"),
+            },
+        },
+        async ({ id, category, isFavorite, notes }) => {
+            try {
+                const body: any = {};
+                if (category !== undefined) body.category = category;
+                if (isFavorite !== undefined) body.is_favorite = isFavorite;
+                if (notes !== undefined) body.notes = notes;
+
+                await apiRequest<any>(`/transactions/${id}`, {
+                    method: "PUT",
+                    body: JSON.stringify(body),
+                });
+                return {
+                    content: [{ type: "text", text: `Transaction ${id} successfully updated.` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error updating transaction: ${error}` }],
+                };
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Manage Non-Recurring Exclusion
+    // ============================================================================
+    server.registerTool(
+        "manage_non_recurring_exclusion",
+        {
+            description: "Mark or unmark a transaction description as non-recurring to exclude/include it in subscription analysis.",
+            inputSchema: {
+                action: z.enum(["add", "remove"]).describe("Whether to add or remove the exclusion"),
+                name: z.string().describe("The transaction description name to exclude"),
+                accountNumber: z.string().optional().describe("The specific bank account or card number (optional)"),
+            },
+        },
+        async ({ action, name, accountNumber }) => {
+            try {
+                const method = action === "add" ? "POST" : "DELETE";
+                const res = await apiRequest<any>("/reports/non-recurring-exclusions", {
+                    method,
+                    body: JSON.stringify({ name, account_number: accountNumber }),
+                });
+                return {
+                    content: [{ type: "text", text: res.message || `Exclusion successfully ${action}ed.` }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text", text: `Error managing recurring exclusion: ${error}` }],
                 };
             }
         }

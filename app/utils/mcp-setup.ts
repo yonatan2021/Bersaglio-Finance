@@ -1,6 +1,45 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+class VaultLockedError extends Error {
+    code: string;
+    type: string;
+    statusCode: number;
+    operational: boolean;
+
+    constructor(message: string, code = "VAULT_LOCKED", type = "VAULT_LOCKED", statusCode = 401) {
+        super(message);
+        this.name = "VaultLockedError";
+        this.code = code;
+        this.type = type;
+        this.statusCode = statusCode;
+        this.operational = true;
+    }
+}
+
+function handleMcpError(error: unknown) {
+    if (error instanceof VaultLockedError) {
+        return {
+            isError: true,
+            content: [{
+                type: "text",
+                text: JSON.stringify({
+                    status: "error",
+                    code: error.code,
+                    type: error.type,
+                    message: error.message || "Vault is locked. Please unlock the vault via the web UI.",
+                    statusCode: error.statusCode,
+                    operational: error.operational
+                }, null, 2)
+            }]
+        };
+    }
+    return {
+        isError: true,
+        content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }]
+    };
+}
+
 // Configuration
 // In Next.js, we can trust the internal port or use localhost
 const PORT = process.env.PORT || "6969";
@@ -23,6 +62,23 @@ async function apiRequest<T>(
 
     if (!response.ok) {
         const errorText = await response.text();
+        if (response.status === 401) {
+            try {
+                const parsed = JSON.parse(errorText);
+                if (parsed.type === 'VAULT_LOCKED' || parsed.code === 'VAULT_LOCKED') {
+                    throw new VaultLockedError(
+                        parsed.error || "Vault is locked.",
+                        parsed.code || "VAULT_LOCKED",
+                        parsed.type || "VAULT_LOCKED",
+                        response.status
+                    );
+                }
+            } catch (e) {
+                if (e instanceof VaultLockedError) {
+                    throw e;
+                }
+            }
+        }
         throw new Error(`API request failed: ${response.status} - ${errorText}`);
     }
 
@@ -35,6 +91,14 @@ function formatCurrency(amount: number): string {
         style: "currency",
         currency: "ILS",
     }).format(amount);
+}
+
+// Helper to format transaction amount with sign and Hebrew direction
+function formatTransactionAmount(amount: number): string {
+    const isIncome = amount >= 0;
+    const sign = isIncome ? "+" : "-";
+    const direction = isIncome ? "(הכנסה)" : "(הוצאה)";
+    return `${sign}${formatCurrency(Math.abs(amount))} ${direction}`;
 }
 
 // Helper function to consume SSE stream from sync-all-stream
@@ -202,12 +266,37 @@ export function createMcpServer() {
                     totalBankExpenses += Number(row.bank_expenses) || 0;
 
                     if (groupBy === "description") {
-                        return `• ${row.description} (${row.category || "Uncategorized"}): ${formatCurrency(row.card_expenses)} (${row.transaction_count} transactions)`;
+                        const cardExp = Number(row.card_expenses) || 0;
+                        const bankInc = Number(row.bank_income) || 0;
+                        const bankExp = Number(row.bank_expenses) || 0;
+                        const parts: string[] = [];
+                        if (cardExp > 0) parts.push(`Card ${formatTransactionAmount(-cardExp)}`);
+                        if (bankInc > 0) parts.push(`Bank Income ${formatTransactionAmount(bankInc)}`);
+                        if (bankExp > 0) parts.push(`Bank Expenses ${formatTransactionAmount(-bankExp)}`);
+
+                        if (parts.length === 0) {
+                            parts.push(formatTransactionAmount(Number(row.amount) || 0));
+                        }
+
+                        return `• ${row.description} (${row.category || "Uncategorized"}): ${parts.join(", ")} (${row.transaction_count} transactions)`;
                     } else if (groupBy === "last4digits") {
-                        return `• Card ***${row.last4digits}: ${formatCurrency(row.card_expenses)} (${row.transaction_count} transactions)`;
+                        const cardExp = Number(row.card_expenses) || 0;
+                        const bankInc = Number(row.bank_income) || 0;
+                        const bankExp = Number(row.bank_expenses) || 0;
+                        const parts: string[] = [];
+                        if (cardExp > 0) parts.push(`Card ${formatTransactionAmount(-cardExp)}`);
+                        if (bankInc > 0) parts.push(`Bank Income ${formatTransactionAmount(bankInc)}`);
+                        if (bankExp > 0) parts.push(`Bank Expenses ${formatTransactionAmount(-bankExp)}`);
+
+                        const netBal = row.net_balance !== undefined ? Number(row.net_balance) : (bankInc - bankExp - cardExp);
+
+                        return `• Account ***${row.last4digits} (${row.bank_account_nickname || "Unknown"}): ${parts.join(", ")} [Net: ${formatTransactionAmount(netBal)}] (${row.transaction_count} transactions)`;
                     } else {
                         const name = row.vendor_nickname || row.vendor;
-                        return `• ${name}: Card ${formatCurrency(row.card_expenses)}, Bank Income ${formatCurrency(row.bank_income)}, Bank Expenses ${formatCurrency(row.bank_expenses)}`;
+                        const cardExp = Number(row.card_expenses) || 0;
+                        const bankInc = Number(row.bank_income) || 0;
+                        const bankExp = Number(row.bank_expenses) || 0;
+                        return `• ${name}: Card Expenses ${formatTransactionAmount(-cardExp)}, Bank Income ${formatTransactionAmount(bankInc)}, Bank Expenses ${formatTransactionAmount(-bankExp)}`;
                     }
                 });
 
@@ -219,19 +308,17 @@ export function createMcpServer() {
                     ...lines,
                     "",
                     "--- Totals ---",
-                    `💳 Total Card Expenses: ${formatCurrency(totalCardExpenses)}`,
-                    `📈 Total Bank Income: ${formatCurrency(totalBankIncome)}`,
-                    `📉 Total Bank Expenses: ${formatCurrency(totalBankExpenses)}`,
-                    `💰 Net Balance: ${formatCurrency(totalBankIncome - totalBankExpenses - totalCardExpenses)}`,
+                    `💳 Total Card Expenses: ${formatTransactionAmount(-totalCardExpenses)}`,
+                    `📈 Total Bank Income: ${formatTransactionAmount(totalBankIncome)}`,
+                    `📉 Total Bank Expenses: ${formatTransactionAmount(-totalBankExpenses)}`,
+                    `💰 Net Balance: ${formatTransactionAmount(totalBankIncome - totalBankExpenses - totalCardExpenses)}`,
                 ].join("\n");
 
                 return {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching monthly summary: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -288,19 +375,19 @@ export function createMcpServer() {
                     };
                 }
 
-                const total = data.reduce((sum, t) => sum + Math.abs(Number(t.price) || 0), 0);
+                const netTotal = data.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
 
                 const transactions = data.slice(0, 20).map((t: any) => {
                     const date = new Date(t.date).toLocaleDateString("he-IL");
                     const installment = t.installments_total > 1
                         ? ` (${t.installments_number}/${t.installments_total})`
                         : "";
-                    return `• ${date}: ${t.name} - ${formatCurrency(Math.abs(t.price))}${installment}`;
+                    return `• ${date}: ${t.name} - ${formatTransactionAmount(Number(t.price))}${installment}`;
                 });
 
                 const summary = [
                     `📁 Category: ${category}`,
-                    `💰 Total: ${formatCurrency(total)} (${data.length} transactions)`,
+                    `💰 Net Total: ${formatTransactionAmount(netTotal)} (${data.length} transactions)`,
                     "",
                     "--- Recent Transactions ---",
                     ...transactions,
@@ -311,9 +398,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching category expenses: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -352,9 +437,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching categories: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -400,18 +483,18 @@ export function createMcpServer() {
                     };
                 }
 
-                const total = data.reduce((sum, t) => sum + Math.abs(Number(t.price) || 0), 0);
+                const netTotal = data.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
 
                 const transactions = data.slice(0, 25).map((t: any) => {
                     const date = new Date(t.date).toLocaleDateString("he-IL");
                     const category = t.category || "Uncategorized";
                     const vendor = t.vendor_nickname || t.vendor;
-                    return `• ${date}: ${t.name} (${category}) - ${formatCurrency(Math.abs(t.price))} [${vendor}]`;
+                    return `• ${date}: ${t.name} (${category}) - ${formatTransactionAmount(Number(t.price))} [${vendor}]`;
                 });
 
                 const summary = [
                     `🔍 Search Results for "${query}"`,
-                    `Found ${data.length} transactions, Total: ${formatCurrency(total)}`,
+                    `Found ${data.length} transactions, Net Total: ${formatTransactionAmount(netTotal)}`,
                     "",
                     ...transactions,
                     data.length > 25 ? `\n... and ${data.length - 25} more results` : "",
@@ -421,9 +504,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error searching transactions: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -493,9 +574,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching budgets: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -541,9 +620,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching sync status: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -570,7 +647,7 @@ export function createMcpServer() {
                     const progress = p.installments_total > 1
                         ? ` (${p.installments_number}/${p.installments_total})`
                         : " (recurring)";
-                    return `• ${p.name}: ${formatCurrency(Math.abs(p.price))}${progress}`;
+                    return `• ${p.name}: ${formatTransactionAmount(Number(p.price) || 0)}${progress}`;
                 });
 
                 const summary = [
@@ -585,9 +662,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching recurring payments: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -626,9 +701,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching accounts: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -682,18 +755,18 @@ export function createMcpServer() {
 
                 // Sort by date descending
                 const sorted = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                const total = sorted.reduce((sum, t) => sum + Math.abs(Number(t.price) || 0), 0);
+                const netTotal = sorted.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
 
                 const transactions = sorted.slice(0, limit).map((t: any) => {
                     const date = new Date(t.date).toLocaleDateString("he-IL");
                     const category = t.category || "Uncategorized";
-                    return `• ${date}: ${t.name} (${category}) - ${formatCurrency(Math.abs(t.price))}`;
+                    return `• ${date}: ${t.name} (${category}) - ${formatTransactionAmount(Number(t.price) || 0)}`;
                 });
 
                 const summary = [
                     `📜 All Transactions`,
                     `Period: ${billingCycle || `${startDate} to ${endDate}`}`,
-                    `Total: ${formatCurrency(total)} (${data.length} transactions)`,
+                    `Net Total: ${formatTransactionAmount(netTotal)} (${data.length} transactions)`,
                     "",
                     ...transactions,
                     data.length > limit ? `\n... and ${data.length - limit} more transactions` : "",
@@ -703,9 +776,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching transactions: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -772,9 +843,7 @@ export function createMcpServer() {
                     };
                 }
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error adding manual expense: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -816,36 +885,51 @@ export function createMcpServer() {
                     };
                 }
 
-                // Sort by total DESC (highest absolute spending first)
-                const sorted = [...response].sort((a, b) => {
-                    const totalA = Math.abs(Number(a.total) || 0);
-                    const totalB = Math.abs(Number(b.total) || 0);
-                    return totalB - totalA;
-                });
-                const grandTotal = sorted.reduce((sum, v) => sum + Math.abs(Number(v.total) || 0), 0);
+                // Segregate expenses (< 0) and income (> 0)
+                const expenses = response.filter((row: any) => (Number(row.total) || 0) < 0);
+                const income = response.filter((row: any) => (Number(row.total) || 0) > 0);
+                const zero = response.filter((row: any) => (Number(row.total) || 0) === 0);
 
-                const lines = sorted.map((row) => {
-                    const total = Math.abs(Number(row.total) || 0);
-                    const percentage = grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0;
-                    return `• ${row.category || "Uncategorized"}: ${formatCurrency(total)} (${row.count} txs, ${percentage}%)`;
+                // Sort expenses: most negative (highest spending) first
+                const sortedExpenses = [...expenses, ...zero].sort((a, b) => (Number(a.total) || 0) - (Number(b.total) || 0));
+                // Sort income: most positive (highest income) first
+                const sortedIncome = [...income].sort((a, b) => (Number(b.total) || 0) - (Number(a.total) || 0));
+
+                const totalExpenses = expenses.reduce((sum, v) => sum + Math.abs(Number(v.total) || 0), 0);
+                const totalIncome = income.reduce((sum, v) => sum + (Number(v.total) || 0), 0);
+
+                const expenseLines = sortedExpenses.map((row) => {
+                    const total = Number(row.total) || 0;
+                    const percentage = totalExpenses > 0 ? Math.round((Math.abs(total) / totalExpenses) * 100) : 0;
+                    return `• ${row.category || "Uncategorized"}: ${formatTransactionAmount(total)} (${row.count || 0} txs, ${percentage}%)`;
+                });
+
+                const incomeLines = sortedIncome.map((row) => {
+                    const total = Number(row.total) || 0;
+                    const percentage = totalIncome > 0 ? Math.round((total / totalIncome) * 100) : 0;
+                    return `• ${row.category || "Uncategorized"}: ${formatTransactionAmount(total)} (${row.count || 0} txs, ${percentage}%)`;
                 });
 
                 const summary = [
                     `📊 Category Breakdown`,
                     `Period: ${billingCycle || `${startDate} to ${endDate}`}`,
-                    `Total Spending: ${formatCurrency(grandTotal)}`,
                     "",
-                    "--- By Category ---",
-                    ...lines,
+                    `--- Expenses (הוצאות) ---`,
+                    `Total Expenses: ${formatTransactionAmount(-totalExpenses)}`,
+                    ...expenseLines,
+                    "",
+                    `--- Income (הכנסות) ---`,
+                    `Total Income: ${formatTransactionAmount(totalIncome)}`,
+                    ...incomeLines,
+                    "",
+                    `💰 Net Total: ${formatTransactionAmount(totalIncome - totalExpenses)}`
                 ].join("\n");
 
                 return {
                     content: [{ type: "text", text: summary }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching category breakdown: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -908,9 +992,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: output.join("\n") }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error fetching balance projection: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -947,9 +1029,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error triggering sync: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -974,9 +1054,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error checking vault status: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1017,9 +1095,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error checking anomalies: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1045,9 +1121,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error triggering anomaly evaluation: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1076,9 +1150,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Anomaly ${id} status successfully updated to "${status}".` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error updating anomaly: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1105,9 +1177,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Budget limit for category "${res.category}" set to ${formatCurrency(res.budget_limit)}.` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error setting category budget: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1133,9 +1203,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Total monthly budget limit set to ${formatCurrency(res.budget_limit)}.` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error setting total budget: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1160,9 +1228,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Total monthly budget limit is: ${formatCurrency(res.budget_limit)}` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error getting total budget: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1201,9 +1267,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error updating category: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1229,9 +1293,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: ["📋 Categorization Rules:", "", ...lines].join("\n") }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error listing rules: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1258,9 +1320,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Rule created successfully: [ID ${res.id}] "${res.name_pattern}" → "${res.target_category}".` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error creating rule: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1286,9 +1346,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Categorization rule ${id} deleted successfully.` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error deleting rule: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1308,9 +1366,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Categorization rules applied successfully. Updated ${res.transactionsUpdated} transactions using ${res.rulesApplied} rules.` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error applying rules: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1344,9 +1400,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: `Transaction ${id} successfully updated.` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error updating transaction: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );
@@ -1375,9 +1429,7 @@ export function createMcpServer() {
                     content: [{ type: "text", text: res.message || `Exclusion successfully ${action}ed.` }],
                 };
             } catch (error) {
-                return {
-                    content: [{ type: "text", text: `Error managing recurring exclusion: ${error}` }],
-                };
+                return handleMcpError(error);
             }
         }
     );

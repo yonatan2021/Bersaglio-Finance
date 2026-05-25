@@ -513,6 +513,280 @@ describe('MCP Server API', () => {
         await handlerPromise;
     });
 
+    it('should split categories into Expenses and Income with correct percentages in get_category_breakdown', async () => {
+        const initReq = new MockRequest('GET', '/api/mcp');
+        const initRes = new MockResponse();
+        (initRes as any).socket = {
+            setTimeout: vi.fn(),
+            setNoDelay: vi.fn(),
+            setKeepAlive: vi.fn(),
+        };
+        const handlerPromise = handler(initReq, initRes);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const match = initRes.body.match(/sessionId=([a-zA-Z0-9-]+)/);
+        const sessionId = match![1];
+
+        // Initialize
+        const valReq = new MockRequest('POST', `/api/mcp?sessionId=${sessionId}`);
+        valReq.query = { sessionId };
+        valReq.headers = { 'content-type': 'application/json' };
+        valReq.body = {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+                protocolVersion: "2024-11-05",
+                capabilities: {},
+                clientInfo: { name: "test-client", version: "1.0.0" }
+            }
+        };
+        setTimeout(() => {
+            valReq.emit('data', Buffer.from(JSON.stringify(valReq.body)));
+            valReq.emit('end');
+        }, 10);
+
+        const valRes = new MockResponse();
+        await handler(valReq, valRes);
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Mock monthly-summary response with groupBy=category
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({
+                items: [
+                    { category: 'Groceries', total: -80, count: 2 },
+                    { category: 'Dining', total: -20, count: 1 },
+                    { category: 'Salary', total: 1000, count: 1 },
+                    { category: 'Investments', total: 500, count: 1 }
+                ]
+            })
+        } as Response);
+
+        // Call Tool
+        const postReq = new MockRequest('POST', `/api/mcp?sessionId=${sessionId}`);
+        postReq.query = { sessionId };
+        postReq.headers = { 'content-type': 'application/json' };
+        postReq.body = {
+            jsonrpc: "2.0",
+            id: 6,
+            method: "tools/call",
+            params: {
+                name: "get_category_breakdown",
+                arguments: { billingCycle: "2026-05" }
+            }
+        };
+
+        setTimeout(() => {
+            postReq.emit('data', Buffer.from(JSON.stringify(postReq.body)));
+            postReq.emit('end');
+        }, 10);
+
+        const postRes = new MockResponse();
+        await handler(postReq, postRes);
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        expect(postRes.statusCode).toBeLessThan(300);
+
+        // Verify API was called
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/reports/monthly-summary?billingCycle=2026-05&groupBy=category'), expect.any(Object));
+
+        // Verify sections split
+        expect(initRes.body).toContain('--- Expenses (הוצאות) ---');
+        expect(initRes.body).toContain('--- Income (הכנסות) ---');
+
+        // Total expenses: 100. Groceries = 80 -> 80%. Dining = 20 -> 20%.
+        // Total income: 1500. Salary = 1000 -> 67%. Investments = 500 -> 33%.
+        expect(initRes.body).toContain('Groceries');
+        expect(initRes.body).toContain('80%');
+        expect(initRes.body).toContain('Dining');
+        expect(initRes.body).toContain('20%');
+        expect(initRes.body).toContain('Salary');
+        expect(initRes.body).toContain('67%');
+        expect(initRes.body).toContain('Investments');
+        expect(initRes.body).toContain('33%');
+
+        // Cleanup
+        initReq.emit('close');
+        await handlerPromise;
+    });
+
+    it('should return a structured VAULT_LOCKED error when API throws 401 VAULT_LOCKED', async () => {
+        const initReq = new MockRequest('GET', '/api/mcp');
+        const initRes = new MockResponse();
+        (initRes as any).socket = {
+            setTimeout: vi.fn(),
+            setNoDelay: vi.fn(),
+            setKeepAlive: vi.fn(),
+        };
+        const handlerPromise = handler(initReq, initRes);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const match = initRes.body.match(/sessionId=([a-zA-Z0-9-]+)/);
+        const sessionId = match![1];
+
+        // Initialize
+        const valReq = new MockRequest('POST', `/api/mcp?sessionId=${sessionId}`);
+        valReq.query = { sessionId };
+        valReq.headers = { 'content-type': 'application/json' };
+        valReq.body = {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+                protocolVersion: "2024-11-05",
+                capabilities: {},
+                clientInfo: { name: "test-client", version: "1.0.0" }
+            }
+        };
+        setTimeout(() => {
+            valReq.emit('data', Buffer.from(JSON.stringify(valReq.body)));
+            valReq.emit('end');
+        }, 10);
+
+        const valRes = new MockResponse();
+        await handler(valReq, valRes);
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Mock 401 VAULT_LOCKED response
+        mockFetch.mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            text: () => Promise.resolve(JSON.stringify({
+                error: "Vault is locked. Decryption key needed.",
+                code: "VAULT_LOCKED",
+                type: "VAULT_LOCKED"
+            }))
+        } as Response);
+
+        // Call any tool, e.g., get_vault_status (or get_all_transactions)
+        const postReq = new MockRequest('POST', `/api/mcp?sessionId=${sessionId}`);
+        postReq.query = { sessionId };
+        postReq.headers = { 'content-type': 'application/json' };
+        postReq.body = {
+            jsonrpc: "2.0",
+            id: 7,
+            method: "tools/call",
+            params: {
+                name: "get_vault_status",
+                arguments: {}
+            }
+        };
+
+        setTimeout(() => {
+            postReq.emit('data', Buffer.from(JSON.stringify(postReq.body)));
+            postReq.emit('end');
+        }, 10);
+
+        const postRes = new MockResponse();
+        await handler(postReq, postRes);
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        expect(postRes.statusCode).toBeLessThan(300);
+
+        // Verify the response payload has isError: true and structured error JSON in SSE stream
+        const dataLines = initRes.body.split('\n').filter(line => line.startsWith('data:'));
+        const lastData = JSON.parse(dataLines[dataLines.length - 1].substring(5).trim());
+        expect(lastData.result.isError).toBe(true);
+        const errObj = JSON.parse(lastData.result.content[0].text);
+        expect(errObj.status).toBe('error');
+        expect(errObj.code).toBe('VAULT_LOCKED');
+        expect(errObj.type).toBe('VAULT_LOCKED');
+        expect(errObj.statusCode).toBe(401);
+        expect(errObj.operational).toBe(true);
+        expect(errObj.message).toBe('Vault is locked. Decryption key needed.');
+
+        // Cleanup
+        initReq.emit('close');
+        await handlerPromise;
+    });
+
+    it('should format transaction amounts with correct signs and Hebrew direction tags in transaction list', async () => {
+        const initReq = new MockRequest('GET', '/api/mcp');
+        const initRes = new MockResponse();
+        (initRes as any).socket = {
+            setTimeout: vi.fn(),
+            setNoDelay: vi.fn(),
+            setKeepAlive: vi.fn(),
+        };
+        const handlerPromise = handler(initReq, initRes);
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const match = initRes.body.match(/sessionId=([a-zA-Z0-9-]+)/);
+        const sessionId = match![1];
+
+        // Initialize
+        const valReq = new MockRequest('POST', `/api/mcp?sessionId=${sessionId}`);
+        valReq.query = { sessionId };
+        valReq.headers = { 'content-type': 'application/json' };
+        valReq.body = {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+                protocolVersion: "2024-11-05",
+                capabilities: {},
+                clientInfo: { name: "test-client", version: "1.0.0" }
+            }
+        };
+        setTimeout(() => {
+            valReq.emit('data', Buffer.from(JSON.stringify(valReq.body)));
+            valReq.emit('end');
+        }, 10);
+
+        const valRes = new MockResponse();
+        await handler(valReq, valRes);
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Mock transactions API response
+        mockFetch.mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({
+                items: [
+                    { name: 'Income Transaction', price: 1500.5, date: '2026-05-15', category: 'Salary' },
+                    { name: 'Expense Transaction', price: -250.75, date: '2026-05-16', category: 'Dining' }
+                ]
+            })
+        } as Response);
+
+        // Call Tool
+        const postReq = new MockRequest('POST', `/api/mcp?sessionId=${sessionId}`);
+        postReq.query = { sessionId };
+        postReq.headers = { 'content-type': 'application/json' };
+        postReq.body = {
+            jsonrpc: "2.0",
+            id: 8,
+            method: "tools/call",
+            params: {
+                name: "get_all_transactions",
+                arguments: { billingCycle: "2026-05" }
+            }
+        };
+
+        setTimeout(() => {
+            postReq.emit('data', Buffer.from(JSON.stringify(postReq.body)));
+            postReq.emit('end');
+        }, 10);
+
+        const postRes = new MockResponse();
+        await handler(postReq, postRes);
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        expect(postRes.statusCode).toBeLessThan(300);
+
+        // Verify signs and Hebrew direction tags are in the output
+        expect(initRes.body).toContain('+');
+        expect(initRes.body).toContain('(הכנסה)');
+        expect(initRes.body).toContain('-');
+        expect(initRes.body).toContain('(הוצאה)');
+        expect(initRes.body).toContain('Income Transaction');
+        expect(initRes.body).toContain('Expense Transaction');
+
+        // Cleanup
+        initReq.emit('close');
+        await handlerPromise;
+    });
+
     // Cleanup
     afterEach(() => {
         // Close any lingering sessions if possible

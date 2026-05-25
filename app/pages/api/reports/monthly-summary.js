@@ -123,6 +123,11 @@ const handler = createApiHandler({
           MAX(t.category) as category,
           COUNT(DISTINCT (t.identifier, t.vendor)) as transaction_count,
           COALESCE(SUM(t.price), 0)::numeric as amount,
+          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
+          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
+          COALESCE(SUM(
+            CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+          ), 0)::numeric as card_expenses,
           COUNT(*) OVER() as total_count
         FROM transactions t
         ${credentialJoin}
@@ -138,6 +143,11 @@ const handler = createApiHandler({
           COALESCE(NULLIF(t.category, ''), 'Uncategorized') as category,
           COALESCE(SUM(t.price), 0)::numeric as total,
           COALESCE(SUM(t.price), 0)::numeric as amount,
+          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
+          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
+          COALESCE(SUM(
+            CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+          ), 0)::numeric as card_expenses,
           COUNT(*)::integer as count,
           COUNT(*) OVER() as total_count
         FROM transactions t

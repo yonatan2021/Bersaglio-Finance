@@ -1,6 +1,6 @@
 ---
 name: nudlers-data-access
-description: "Complete reference for Nudlers MCP tools: 27 financial tools for Israeli bank/credit data. Covers all parameters, date formats, billing cycle concept, quick-lookup table, and error handling. Use this skill whenever you need to know which MCP tool to call and with what parameters."
+description: "Complete reference for Nudlers MCP tools: 29 financial tools for Israeli bank/credit data. Covers all parameters, date formats, billing cycle concepts (credit vs. debit, custom billing days), quick-lookup table, and error handling. Use this skill whenever you need to know which MCP tool to call and with what parameters."
 version: 1.0.0
 author: Yoni Gelfman
 license: MIT
@@ -28,11 +28,21 @@ If the server is not running, Nudlers app must be started first (`npm run dev` o
 
 **Critical**: Nudlers does NOT group by calendar month. It uses billing cycles.
 
-- Default billing cycle start: **day 10 of each month**
-- `billingCycle: "2025-04"` means: **10 March 2025 → 9 April 2025**
-- `billingCycle: "2025-05"` means: **10 April 2025 → 9 May 2025**
-- When the user says "last month" or "this month", use `billingCycle`, not date ranges
-- Current month default: tools auto-compute it when no date params are passed
+- **Default billing cycle start**: Credit cards default to **day 10 of each month**. However, this start day is customizable on a per-card basis (values between 1 and 28).
+- **Debit vs Credit**: 
+  - **Debit cards** are billed immediately. Therefore, their effective billing cycle start day is always **1** (day 1 of each month).
+  - **Credit cards** default to start day 10, or use their configured `billing_cycle_start_day`.
+- **SQL / Grouping Logic**:
+  - If a transaction's day of month is `>= startDay`, it falls into that month's cycle (`YYYY-MM`).
+  - If the day of month is `< startDay`, it falls into the previous month's cycle (`YYYY-MM-1`).
+- **Example (Start day = 10)**:
+  - `billingCycle: "2025-04"` means: **10 March 2025 → 9 April 2025**
+- **Example (Start day = 15)**:
+  - `billingCycle: "2025-04"` means: **15 March 2025 → 14 April 2025**
+- **Example (Debit Card / Start day = 1)**:
+  - `billingCycle: "2025-04"` means: **1 April 2025 → 30 April 2025**
+- When the user says "last month" or "this month", use `billingCycle`, not date ranges.
+- Current month default: tools auto-compute it when no date params are passed.
 
 **Date param options** (interchangeable across most tools):
 - Option A: `billingCycle: "YYYY-MM"` — preferred for monthly questions
@@ -480,6 +490,37 @@ Mark or unmark a transaction description as non-recurring to exclude/include it 
 
 ---
 
+### 28. `list_cards`
+
+List all credit and debit cards configured in the system, including their nicknames, vendor, transactions count, type (credit/debit), and billing cycle start day.
+
+No parameters.
+
+**Returns:** List of configured cards with digits, nickname, vendor, type (Credit or Debit), billing day, and transaction count.
+
+**Use when:** User asks what cards they have, wants to check if a card is debit/credit, or wants to find a card's current billing cycle start day.
+
+---
+
+### 29. `configure_card`
+
+Configure settings for a specific card, including setting its brand/vendor, nickname, type (credit/debit), and billing cycle start day.
+
+**Parameters:**
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `last4Digits` | string | **yes** | — | Last 4 digits of the card to configure (e.g., `"1234"`) |
+| `cardVendor` | string | **yes** | — | Card vendor/brand (e.g., `"visa"`, `"mastercard"`, `"max"`, `"isracard"`, `"amex"`, `"diners"`) |
+| `cardNickname` | string | no | — | Friendly nickname for the card |
+| `isDebit` | boolean | no | — | `true` if debit card (immediate billing), `false` if credit |
+| `billingCycleStartDay` | number | no | — | Billing day of the month (1–28). Only applicable for credit cards. |
+
+**Returns:** Confirmation message with the updated card properties.
+
+**Use when:** User wants to set a nickname, change a card to debit, or customize a credit card's billing day.
+
+---
+
 ## Quick-Lookup Table
 
 | User question | Tool to call | Key params |
@@ -519,6 +560,10 @@ Mark or unmark a transaction description as non-recurring to exclude/include it 
 | "תחיל את כל החוקים על העסקאות הישנות" | `apply_categorization_rules` | explain potential impacts first! |
 | "תעדכן את הקטגוריה של העסקה הזו לבידור / תוסיף הערה לעסקה" | `update_transaction_details` | `id: "ID"`, category/notes/isFavorite only (no price/date) |
 | "אל תספור את נטפליקס כמנוי קבוע / תספור את X כמנוי" | `manage_non_recurring_exclusion` | `action: "add"` / `"remove"`, `name: "netflix"` |
+| "אילו כרטיסים מוגדרים אצלי? / אילו כרטיסי אשראי יש?" | `list_cards` | — |
+| "תגדיר שכרטיס 4321 הוא כרטיס דביט מיידי" | `configure_card` | `last4Digits: "4321"`, `isDebit: true`, `cardVendor: "visa"` |
+| "תשנה את יום החיוב של כרטיס 8765 ל-15 בחודש" | `configure_card` | `last4Digits: "8765"`, `billingCycleStartDay: 15`, `cardVendor: "max"` |
+| "תן שם חיבה לכרטיס 9999" | `configure_card` | `last4Digits: "9999"`, `cardNickname: "Nickname"`, `cardVendor: "isracard"` |
 
 ---
 
@@ -551,6 +596,11 @@ Mark or unmark a transaction description as non-recurring to exclude/include it 
 2. If vault is locked, ask the user to unlock it in the Nudlers web app (Hermes cannot unlock the vault).
 3. If vault is unlocked, call `trigger_full_sync`
 4. Parse the SSE response summary, and explicitly report individual account status successes and failures.
+
+### Pattern 7: Card configuration update
+1. `list_cards` → see all existing cards and retrieve their details (vendor, nickname, type, current billing cycle start day).
+2. Formulate the call to `configure_card` ensuring you use the correct `last4Digits` and provide the required `cardVendor`.
+3. Call `configure_card` and present the updated status to the user.
 
 ---
 

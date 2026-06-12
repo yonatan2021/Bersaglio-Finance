@@ -10,8 +10,13 @@
       "transactions": "Transactions",
       "vendor": "Card Vendor",
       "nickname": "Nickname",
-      "bankAccount": "Bank Account"
+      "bankAccount": "Bank Account",
+      "cardType": "Card Type",
+      "billingCycleStart": "Billing Day"
     },
+    "cardTypeCredit": "Credit (Recurring)",
+    "cardTypeDebit": "Debit (Immediate)",
+    "billingCycleStartDayPlaceholder": "Day (1-28)",
     "vendorNone": "None",
     "clickToSetVendor": "Click to set vendor",
     "noNickname": "No nickname",
@@ -37,7 +42,8 @@
       "vendorUpdated": "Vendor updated",
       "nicknameSaved": "Nickname saved",
       "bankAccountUpdated": "Bank account updated",
-      "customBankSaved": "Custom bank saved"
+      "customBankSaved": "Custom bank saved",
+      "cardSettingsSaved": "Card settings saved successfully"
     }
   },
   "databaseBackup": {

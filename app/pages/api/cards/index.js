@@ -25,6 +25,8 @@ export default async function handler(req, res) {
           uc.transaction_count,
           cv.card_vendor,
           cv.card_nickname,
+          cv.is_debit,
+          cv.billing_cycle_start_day,
           cv.id as card_vendor_id,
           co.id as card_ownership_id,
           co.linked_bank_account_id,
@@ -44,23 +46,35 @@ export default async function handler(req, res) {
       res.status(200).json(result.rows);
     } else if (req.method === "POST") {
       // Create or update a card vendor mapping
-      const { last4_digits, card_vendor, card_nickname } = req.body;
+      const { last4_digits, card_vendor, card_nickname, is_debit, billing_cycle_start_day } = req.body;
 
       if (!last4_digits || !card_vendor) {
         return res.status(400).json({ error: "last4_digits and card_vendor are required" });
       }
 
+      let startDay = null;
+      if (billing_cycle_start_day !== undefined && billing_cycle_start_day !== null && billing_cycle_start_day !== '') {
+        startDay = parseInt(billing_cycle_start_day, 10);
+        if (isNaN(startDay) || startDay < 1 || startDay > 28) {
+          return res.status(400).json({ error: "billing_cycle_start_day must be between 1 and 28" });
+        }
+      }
+
+      const isDebitBool = is_debit === true || is_debit === 'true';
+
       // Upsert the card vendor
       const result = await client.query(
-        `INSERT INTO card_vendors (last4_digits, card_vendor, card_nickname, updated_at)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+        `INSERT INTO card_vendors (last4_digits, card_vendor, card_nickname, is_debit, billing_cycle_start_day, updated_at)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
          ON CONFLICT (last4_digits) 
          DO UPDATE SET 
            card_vendor = EXCLUDED.card_vendor,
            card_nickname = EXCLUDED.card_nickname,
+           is_debit = EXCLUDED.is_debit,
+           billing_cycle_start_day = EXCLUDED.billing_cycle_start_day,
            updated_at = CURRENT_TIMESTAMP
          RETURNING *`,
-        [last4_digits, card_vendor, card_nickname || null]
+        [last4_digits, card_vendor, card_nickname || null, isDebitBool, startDay]
       );
 
       res.status(200).json(result.rows[0]);

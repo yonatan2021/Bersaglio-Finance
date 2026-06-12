@@ -25,20 +25,18 @@ describe('Transaction Logic Tests', () => {
     describe('getBillingCycleSql', () => {
         it('should contain the core logic components', () => {
             const sql = getBillingCycleSql(10);
-            expect(sql).toContain('>= 10');
+            expect(sql).toContain('card_vendors');
             expect(sql).toContain('INTERVAL \'1 month\'');
         });
 
         it('should use previous month for processed_date on the startDay', () => {
             // New logic: processed_date on startDay belongs to startDay month (Current Month)
             // Correction: For Credit Card Charges (processed_date != date), if date is 10th (Start Day),
-            // it usually pays for the PREVIOUS cycle. So strictly greater > 10 means Current.
-            // 10 itself -> Previous.
+            // it usually pays for the PREVIOUS cycle. So strictly greater > resolvedStartDay means Current.
+            // resolvedStartDay itself -> Previous.
             const sql = getBillingCycleSql(10, 't.date', 't.processed_date');
             expect(sql).toContain('WHEN t.processed_date IS NOT NULL AND t.processed_date != t.date');
-            expect(sql).toContain('WHEN EXTRACT(DAY FROM t.processed_date) > 10');
-            // logic is: > 10 -> processed_date (no interval)
-            // <= 10 -> processed_date - 1 month
+            expect(sql).toContain('WHEN EXTRACT(DAY FROM t.processed_date) >');
         });
     });
 

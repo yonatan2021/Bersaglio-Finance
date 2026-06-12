@@ -101,18 +101,20 @@ describe('Cards API Endpoint', () => {
                 body: {
                     last4_digits: '1234',
                     card_vendor: 'visa',
-                    card_nickname: 'Main Card'
+                    card_nickname: 'Main Card',
+                    is_debit: true,
+                    billing_cycle_start_day: 15
                 }
             };
             mockClient.query.mockResolvedValue({
-                rows: [{ last4_digits: '1234', card_vendor: 'visa', card_nickname: 'Main Card' }]
+                rows: [{ last4_digits: '1234', card_vendor: 'visa', card_nickname: 'Main Card', is_debit: true, billing_cycle_start_day: 15 }]
             });
 
             await handler(mockReq, mockRes);
 
             expect(mockClient.query).toHaveBeenCalledTimes(1);
             expect(mockClient.query.mock.calls[0][0]).toContain('INSERT INTO card_vendors');
-            expect(mockClient.query.mock.calls[0][1]).toEqual(['1234', 'visa', 'Main Card']);
+            expect(mockClient.query.mock.calls[0][1]).toEqual(['1234', 'visa', 'Main Card', true, 15]);
 
             expect(mockRes.status).toHaveBeenCalledWith(200);
             expect(mockRes.json).toHaveBeenCalled();

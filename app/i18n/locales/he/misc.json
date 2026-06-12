@@ -10,8 +10,13 @@
       "transactions": "עסקאות",
       "vendor": "ספק הכרטיס",
       "nickname": "כינוי",
-      "bankAccount": "חשבון בנק"
+      "bankAccount": "חשבון בנק",
+      "cardType": "סוג כרטיס",
+      "billingCycleStart": "יום חיוב"
     },
+    "cardTypeCredit": "אשראי (מחזורי)",
+    "cardTypeDebit": "דביט (מיידי)",
+    "billingCycleStartDayPlaceholder": "יום (1-28)",
     "vendorNone": "ללא",
     "clickToSetVendor": "לחצו לבחירת ספק",
     "noNickname": "ללא כינוי",
@@ -37,7 +42,8 @@
       "vendorUpdated": "ספק הכרטיס עודכן",
       "nicknameSaved": "הכינוי נשמר",
       "bankAccountUpdated": "חשבון הבנק עודכן",
-      "customBankSaved": "החשבון המותאם נשמר"
+      "customBankSaved": "החשבון המותאם נשמר",
+      "cardSettingsSaved": "הגדרות הכרטיס עודכנו בהצלחה"
     }
   },
   "databaseBackup": {

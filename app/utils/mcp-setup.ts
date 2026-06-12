@@ -1434,5 +1434,82 @@ export function createMcpServer() {
         }
     );
 
+    // ============================================================================
+    // TOOL: List Cards
+    // ============================================================================
+    server.registerTool(
+        "list_cards",
+        {
+            description: "List all credit and debit cards configured in the system, including their nicknames, vendor, transactions count, type (credit/debit), and billing cycle start day.",
+        },
+        async () => {
+            try {
+                const cards = await apiRequest<any[]>("/cards");
+                if (!cards || cards.length === 0) {
+                    return {
+                        content: [{ type: "text", text: "No cards found in the system." }],
+                    };
+                }
+                const lines = cards.map((c: any) => {
+                    const typeStr = c.is_debit ? "Debit (Immediate)" : "Credit (Recurring)";
+                    const billingDayStr = c.is_debit ? "N/A" : `${c.billing_cycle_start_day || 10}`;
+                    const nickname = c.card_nickname ? ` "${c.card_nickname}"` : "";
+                    return `• Card •••• ${c.last4_digits}${nickname} (${c.card_vendor || "None"}) | Type: ${typeStr} | Billing Day: ${billingDayStr} | Transactions: ${c.transaction_count}`;
+                });
+                return {
+                    content: [{ type: "text", text: ["💳 Configured Cards:", "", ...lines].join("\n") }],
+                };
+            } catch (error) {
+                return handleMcpError(error);
+            }
+        }
+    );
+
+    // ============================================================================
+    // TOOL: Configure Card Settings
+    // ============================================================================
+    server.registerTool(
+        "configure_card",
+        {
+            description: "Configure settings for a specific card, including setting its brand/vendor, nickname, type (credit/debit), and billing cycle start day.",
+            inputSchema: {
+                last4Digits: z.string().describe("The last 4 digits of the card (e.g. '1234')"),
+                cardVendor: z.string().describe("The brand/vendor of the card (e.g. 'visa', 'mastercard', 'max', 'isracard', 'amex', 'diners')"),
+                cardNickname: z.string().optional().describe("A friendly nickname for the card"),
+                isDebit: z.boolean().optional().describe("Set to true if this is a debit card (immediate billing), false for credit (recurring)"),
+                billingCycleStartDay: z.number().min(1).max(28).optional().describe("The start day of the monthly billing cycle (1-28). Only applicable for credit cards."),
+            },
+        },
+        async ({ last4Digits, cardVendor, cardNickname, isDebit, billingCycleStartDay }) => {
+            try {
+                const res = await apiRequest<any>("/cards", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        last4_digits: last4Digits,
+                        card_vendor: cardVendor,
+                        card_nickname: cardNickname,
+                        is_debit: isDebit,
+                        billing_cycle_start_day: billingCycleStartDay
+                    }),
+                });
+                const typeStr = res.is_debit ? "Debit" : "Credit";
+                const billingDayStr = res.is_debit ? "N/A" : `${res.billing_cycle_start_day || 10}`;
+                const text = [
+                    `💳 Card settings updated successfully!`,
+                    `• Card: •••• ${res.last4_digits}`,
+                    `• Vendor: ${res.card_vendor}`,
+                    `• Nickname: ${res.card_nickname || "None"}`,
+                    `• Type: ${typeStr}`,
+                    `• Billing Cycle Start Day: ${billingDayStr}`
+                ].join("\n");
+                return {
+                    content: [{ type: "text", text: text }],
+                };
+            } catch (error) {
+                return handleMcpError(error);
+            }
+        }
+    );
+
     return server;
 }

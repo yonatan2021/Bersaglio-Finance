@@ -522,11 +522,30 @@ export async function insertTransaction(client, transaction, vendor, accountNumb
 
   // 5. Build Processed Date
   let finalProcessedDate = processedDate || date;
-  if (!isBank && (!processedDate || new Date(processedDate).getTime() === new Date(date).getTime())) {
-    const billingStartDay = billingCycleStartDay || 10;
-    if (new Date(date).getDate() >= billingStartDay) {
-      const d = new Date(date);
-      finalProcessedDate = formatLocalDate(new Date(d.getFullYear(), d.getMonth() + 1, billingStartDay - 1));
+  if (!isBank) {
+    let cardBillingStartDay = billingCycleStartDay || 10;
+    let isCardDebit = false;
+
+    if (accountNumber) {
+      const last4 = accountNumber.slice(-4);
+      const cardResult = await client.query(
+        'SELECT billing_cycle_start_day, is_debit FROM card_vendors WHERE last4_digits = $1',
+        [last4]
+      );
+      if (cardResult.rows.length > 0) {
+        const card = cardResult.rows[0];
+        isCardDebit = !!card.is_debit;
+        if (card.billing_cycle_start_day !== null && card.billing_cycle_start_day !== undefined) {
+          cardBillingStartDay = card.billing_cycle_start_day;
+        }
+      }
+    }
+
+    if (!isCardDebit && (!processedDate || new Date(processedDate).getTime() === new Date(date).getTime())) {
+      if (new Date(date).getDate() >= cardBillingStartDay) {
+        const d = new Date(date);
+        finalProcessedDate = formatLocalDate(new Date(d.getFullYear(), d.getMonth() + 1, cardBillingStartDay - 1));
+      }
     }
   }
 

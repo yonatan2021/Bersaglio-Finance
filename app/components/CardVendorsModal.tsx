@@ -87,6 +87,8 @@ interface CardData {
   bank_account_vendor?: string | null;
   custom_bank_account_number?: string | null;
   custom_bank_account_nickname?: string | null;
+  is_debit?: boolean;
+  billing_cycle_start_day?: number | null;
 }
 
 interface BankAccount {
@@ -196,12 +198,16 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     bankAccountId: number | null;
     customBankNumber: string;
     customBankNickname: string;
+    isDebit: boolean;
+    billingCycleStartDay: number | string;
   }>({
     vendor: '',
     nickname: '',
     bankAccountId: null,
     customBankNumber: '',
-    customBankNickname: ''
+    customBankNickname: '',
+    isDebit: false,
+    billingCycleStartDay: ''
   });
   const [originalValues, setOriginalValues] = useState<typeof editValues | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -282,6 +288,8 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
       bankAccountId: card.linked_bank_account_id || ((card.custom_bank_account_number || card.custom_bank_account_nickname) ? -1 : null),
       customBankNumber: card.custom_bank_account_number || '',
       customBankNickname: card.custom_bank_account_nickname || '',
+      isDebit: !!card.is_debit,
+      billingCycleStartDay: card.billing_cycle_start_day !== null && card.billing_cycle_start_day !== undefined ? card.billing_cycle_start_day : '',
     };
 
     setEditingCard(card.last4_digits);
@@ -311,7 +319,9 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
             bank_account_number: linkedBank?.bank_account_number || null,
             bank_account_vendor: linkedBank?.vendor || null,
             custom_bank_account_number: values.bankAccountId === -1 ? values.customBankNumber : null,
-            custom_bank_account_nickname: values.bankAccountId === -1 ? values.customBankNickname : null
+            custom_bank_account_nickname: values.bankAccountId === -1 ? values.customBankNickname : null,
+            is_debit: values.isDebit,
+            billing_cycle_start_day: values.billingCycleStartDay !== '' ? Number(values.billingCycleStartDay) : null
           };
         }
         return c;
@@ -331,6 +341,8 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
           last4_digits,
           card_vendor: values.vendor,
           card_nickname: values.nickname,
+          is_debit: values.isDebit,
+          billing_cycle_start_day: values.billingCycleStartDay !== '' ? Number(values.billingCycleStartDay) : null
         }),
       });
 
@@ -557,6 +569,140 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
           onClick={(e) => handleEdit(card, 'nickname', e)}
         >
           {card.card_nickname || t('misc:cardVendors.noNickname')}
+        </Typography>
+      )
+    },
+    {
+      id: 'cardType',
+      label: t('misc:cardVendors.columns.cardType'),
+      minWidth: '150px',
+      format: (_: any, card: CardData) => editingCard === card.last4_digits ? (
+        <TextField
+          key={`debit-edit-${card.last4_digits}`}
+          className={`edit-group-${card.last4_digits}`}
+          select
+          size="small"
+          autoFocus={focusedField === 'cardType'}
+          SelectProps={{
+            defaultOpen: focusedField === 'cardType',
+          }}
+          value={editValues.isDebit ? 'debit' : 'credit'}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const isDebitVal = e.target.value === 'debit';
+            const newValues = { 
+              ...editValues, 
+              isDebit: isDebitVal,
+              billingCycleStartDay: isDebitVal ? '' : editValues.billingCycleStartDay
+            };
+            setEditValues(newValues);
+            
+            if (JSON.stringify(newValues) !== JSON.stringify(originalValues)) {
+              setTimeout(() => {
+                handleSave(editingCard, newValues).then((success) => {
+                  if (success) {
+                    setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.cardSettingsSaved'), severity: 'success' });
+                  }
+                });
+              }, 200);
+            }
+          }}
+          fullWidth
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+            },
+          }}
+        >
+          <MenuItem value="credit">{t('misc:cardVendors.cardTypeCredit')}</MenuItem>
+          <MenuItem value="debit">{t('misc:cardVendors.cardTypeDebit')}</MenuItem>
+        </TextField>
+      ) : (
+        <Typography
+          sx={{
+            cursor: 'pointer',
+            padding: '8px 12px',
+            borderRadius: '12px',
+            transition: 'all 0.2s',
+            '&:hover': {
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            },
+          }}
+          onClick={(e) => handleEdit(card, 'cardType', e)}
+        >
+          {card.is_debit ? t('misc:cardVendors.cardTypeDebit') : t('misc:cardVendors.cardTypeCredit')}
+        </Typography>
+      )
+    },
+    {
+      id: 'billingCycleStart',
+      label: t('misc:cardVendors.columns.billingCycleStart'),
+      minWidth: '120px',
+      format: (_: any, card: CardData) => editingCard === card.last4_digits ? (
+        <TextField
+          key={`billing-day-edit-${card.last4_digits}`}
+          className={`edit-group-${card.last4_digits}`}
+          type="number"
+          size="small"
+          autoFocus={focusedField === 'billingCycleStart'}
+          disabled={editValues.isDebit}
+          value={editValues.billingCycleStartDay}
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            const val = e.target.value;
+            setEditValues(prev => ({ ...prev, billingCycleStartDay: val }));
+          }}
+          onBlur={(e) => {
+            if (e.relatedTarget && (e.relatedTarget as Element).closest(`.edit-group-${card.last4_digits}`)) {
+              return;
+            }
+            if (JSON.stringify(editValues) !== JSON.stringify(originalValues)) {
+              handleSave(editingCard, editValues).then((success) => {
+                if (success) {
+                  setEditingCard(null);
+                  setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.cardSettingsSaved'), severity: 'success' });
+                }
+              });
+            } else {
+              setEditingCard(null);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              (e.target as HTMLElement).blur();
+            }
+          }}
+          inputProps={{ min: 1, max: 28 }}
+          placeholder={t('misc:cardVendors.billingCycleStartDayPlaceholder')}
+          fullWidth
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+            },
+          }}
+        />
+      ) : (
+        <Typography
+          sx={{
+            color: card.billing_cycle_start_day ? theme.palette.text.primary : theme.palette.text.disabled,
+            fontStyle: card.billing_cycle_start_day ? 'normal' : 'italic',
+            cursor: card.is_debit ? 'default' : 'pointer',
+            padding: '8px 12px',
+            borderRadius: '12px',
+            transition: 'all 0.2s',
+            ...(!card.is_debit && {
+              '&:hover': {
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              },
+            })
+          }}
+          onClick={(e) => {
+            if (!card.is_debit) {
+              handleEdit(card, 'billingCycleStart', e);
+            }
+          }}
+        >
+          {card.is_debit ? 'N/A' : (card.billing_cycle_start_day || 10)}
         </Typography>
       )
     },

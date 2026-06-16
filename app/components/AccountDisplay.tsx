@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, useTheme, Tooltip } from '@mui/material';
+import { Box, useTheme } from '@mui/material';
 import { CardVendorIcon } from './CardVendorsModal';
 import { useCardVendors } from './CategoryDashboard/utils/useCardVendors';
 import { useTranslation } from 'react-i18next';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, CircularProgress, useTheme } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import TransactionsTable from './CategoryDashboard/components/TransactionsTable';
+import TransactionsTable, { Transaction } from './CategoryDashboard/components/TransactionsTable';
 import { useDateSelection } from '../context/DateSelectionContext';
 import { logger } from '../utils/client-logger';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ const RecentTransactionsModule: React.FC = () => {
         billingCycle
     } = useDateSelection();
 
-    const [transactions, setTransactions] = useState<any[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(0);
@@ -64,10 +64,10 @@ const RecentTransactionsModule: React.FC = () => {
     }, [billingCycle, startDate, endDate, page]);
 
     useEffect(() => {
-        if (billingCycle || (startDate && endDate)) {
-            fetchRecentTransactions(false);
-        }
-    }, [billingCycle, startDate, endDate]); // Only refetch when dates change, not when fetchRecentTransactions changes (to avoid loop with page dependency)
+        if (!billingCycle && !(startDate && endDate)) return;
+        queueMicrotask(() => fetchRecentTransactions(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchRecentTransactions intentionally excluded; it depends on page which would loop
+    }, [billingCycle, startDate, endDate]);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
@@ -105,7 +105,6 @@ const RecentTransactionsModule: React.FC = () => {
                     </Typography>
                 )}
             </Box>
-
             <Box
                 onScroll={handleScroll}
                 sx={{
@@ -164,7 +163,9 @@ const RecentTransactionsModule: React.FC = () => {
                         )}
                         {!hasMore && transactions.length > PAGE_SIZE && (
                             <Box sx={{ p: 2, textAlign: 'center' }}>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" sx={{
+                                    color: "text.secondary"
+                                }}>
                                     {t('recentTransactions.endOfList')}
                                 </Typography>
                             </Box>

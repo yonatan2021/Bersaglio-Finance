@@ -19,6 +19,7 @@ describe('Apply Rules API (/api/categories/apply-rules)', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        (getDB as any).mockReset();
         // apply-rules uses getDB twice: once in createApiHandler, once in transform
         mockOuterClient = { query: vi.fn(), release: vi.fn() };
         mockClient = { query: vi.fn(), release: vi.fn() };
@@ -137,6 +138,7 @@ describe('Update by Description API (/api/categories/update-by-description)', ()
 
     beforeEach(() => {
         vi.clearAllMocks();
+        (getDB as any).mockReset();
         mockOuterClient = { query: vi.fn(), release: vi.fn() };
         mockClient = { query: vi.fn(), release: vi.fn() };
         (getDB as any)

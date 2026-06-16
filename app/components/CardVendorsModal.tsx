@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { logger } from '../utils/client-logger';
 import {
@@ -9,20 +9,16 @@ import {
   MenuItem,
   styled,
   Typography,
-  IconButton,
-  Snackbar,
-  Alert,
   useTheme,
   alpha
 } from '@mui/material';
 import Table from './Table';
-import SaveIcon from '@mui/icons-material/Save';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CircularProgress from '@mui/material/CircularProgress';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ModalHeader from './ModalHeader';
 import { BANK_VENDORS } from '../utils/constants';
+import { useSnackbar } from './hooks/useSnackbar';
+import SnackbarFeedback from './SnackbarFeedback';
 
 // Card vendor definitions with their logos and colors
 export const CARD_VENDORS = {
@@ -99,7 +95,7 @@ interface BankAccount {
 }
 
 interface CardVendorsModalProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
 }
 
@@ -165,6 +161,7 @@ export const CardVendorIcon: React.FC<{ vendor: string | null; size?: number }> 
         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
       }}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- onError swaps the broken image for an inline span fallback; next/image can't model that */}
       <img
         src={vendorConfig.logo}
         alt={vendorConfig.name}
@@ -184,7 +181,7 @@ export const CardVendorIcon: React.FC<{ vendor: string | null; size?: number }> 
   );
 };
 
-export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalProps) {
+export default function CardVendorsModal({ open, onClose }: CardVendorsModalProps) {
   const theme = useTheme();
   const { t } = useTranslation(['misc', 'common']);
   const [cards, setCards] = useState<CardData[]>([]);
@@ -210,22 +207,11 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     billingCycleStartDay: ''
   });
   const [originalValues, setOriginalValues] = useState<typeof editValues | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success',
-  });
+  const [, setIsSaving] = useState(false);
+  const [_lastSaved, setLastSaved] = useState<Date | null>(null);
+  const { snackbar, showSnackbar, hideSnackbar } = useSnackbar();
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchCards();
-      fetchBankAccounts();
-    }
-  }, [isOpen]);
-
-  const fetchCards = async () => {
+  const fetchCards = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/cards');
@@ -235,22 +221,21 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
       const data = await response.json();
       setCards(data);
     } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : t('misc:cardVendors.errors.generic'),
-        severity: 'error',
-      });
+      showSnackbar(
+        err instanceof Error ? err.message : t('misc:cardVendors.errors.generic'),
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showSnackbar, t]);
 
-  const fetchBankAccounts = async () => {
+  const fetchBankAccounts = useCallback(async () => {
     try {
       const response = await fetch('/api/credentials');
       if (response.ok) {
         const data = await response.json();
-        const banks = data.filter((acc: any) =>
+        const banks = data.filter((acc: { vendor: string }) =>
           ['hapoalim', 'leumi', 'mizrahi', 'discount', 'yahav', 'union', 'otsarHahayal', 'beinleumi', 'massad', 'pagi'].includes(acc.vendor)
         );
         setBankAccounts(banks);
@@ -258,9 +243,17 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     } catch (err) {
       logger.error('Failed to fetch bank accounts', err as Error);
     }
-  };
+  }, []);
 
-  const handleEdit = (card: CardData, field: string = 'vendor', event?: React.MouseEvent) => {
+  useEffect(() => {
+    if (!open) return;
+    queueMicrotask(() => {
+      fetchCards();
+      fetchBankAccounts();
+    });
+  }, [open, fetchCards, fetchBankAccounts]);
+
+  const handleEdit = useCallback((card: CardData, field: string = 'vendor', event?: React.MouseEvent) => {
     if (event) {
       event.stopPropagation();
     }
@@ -278,6 +271,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     if (editingCard && originalValues) {
       const hasChanges = JSON.stringify(editValues) !== JSON.stringify(originalValues);
       if (hasChanges) {
+        // eslint-disable-next-line react-hooks/immutability -- handleSave is declared below; closure captures it at runtime
         handleSave(editingCard, editValues);
       }
     }
@@ -298,11 +292,12 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     setOriginalValues(initialValues);
     setLastSaved(null);
     setIsSaving(false);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSave is declared below; depending on it would create circular deps
+  }, [editingCard, editValues, originalValues]);
 
 
 
-  const handleSave = async (last4_digits: string, values: typeof editValues): Promise<boolean> => {
+  const handleSave = useCallback(async (last4_digits: string, values: typeof editValues): Promise<boolean> => {
     try {
       setIsSaving(true);
 
@@ -353,7 +348,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
       const card = cards.find(c => c.last4_digits === last4_digits);
 
       if (card?.card_ownership_id) {
-        const payload: any = {};
+        const payload: Record<string, unknown> = {};
 
         if (values.bankAccountId === -1) {
           if (!values.customBankNumber?.trim() && !values.customBankNickname?.trim()) {
@@ -383,16 +378,15 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
 
       return true;
     } catch (err) {
-      setSnackbar({
-        open: true,
-        message: err instanceof Error ? err.message : t('misc:cardVendors.errors.saveFailed'),
-        severity: 'error',
-      });
+      showSnackbar(
+        err instanceof Error ? err.message : t('misc:cardVendors.errors.saveFailed'),
+        'error'
+      );
       return false;
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [bankAccounts, cards, showSnackbar, t]);
 
   useEffect(() => {
     if (!editingCard || !originalValues) return;
@@ -404,13 +398,13 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [editValues, editingCard, originalValues]);
+  }, [editValues, editingCard, originalValues, handleSave]);
 
   const columns = React.useMemo(() => [
     {
       id: 'card',
       label: t('misc:cardVendors.columns.card'),
-      format: (_: any, card: CardData) => (
+      format: (_: unknown, card: CardData) => (
         <CardChip>
           <CardVendorIcon vendor={card.card_vendor} size={28} />
           •••• {card.last4_digits}
@@ -420,11 +414,11 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     {
       id: 'transactions',
       label: t('misc:cardVendors.columns.transactions'),
-      format: (_: any, card: CardData) => (
+      format: (_: unknown, card: CardData) => (
         <Typography
           sx={{
             backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            color: '#6366f1',
+            color: 'var(--n-primary-500)',
             padding: '4px 12px',
             borderRadius: '20px',
             fontSize: '14px',
@@ -440,16 +434,13 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
       id: 'vendor',
       label: t('misc:cardVendors.columns.vendor'),
       minWidth: '200px',
-      format: (_: any, card: CardData) => editingCard === card.last4_digits ? (
+      format: (_: unknown, card: CardData) => editingCard === card.last4_digits ? (
         <TextField
           key={`vendor-edit-${card.last4_digits}`}
           className={`edit-group-${card.last4_digits}`}
           select
           size="small"
           autoFocus={focusedField === 'vendor'}
-          SelectProps={{
-            defaultOpen: focusedField === 'vendor',
-          }}
           value={editValues.vendor}
           onClick={(e) => e.stopPropagation()}
           onChange={(e) => {
@@ -462,7 +453,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
                 handleSave(editingCard, newValues).then((success) => {
                   if (success) {
                     setEditingCard(null);
-                    setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.vendorUpdated'), severity: 'success' });
+                    showSnackbar(t('misc:cardVendors.snackbar.vendorUpdated'), 'success');
                   }
                 });
               }, 200);
@@ -475,6 +466,11 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
             '& .MuiOutlinedInput-root': {
               borderRadius: '12px',
             },
+          }}
+          slotProps={{
+            select: {
+              defaultOpen: focusedField === 'vendor',
+            }
           }}
         >
           <MenuItem value="">
@@ -517,7 +513,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
     {
       id: 'nickname',
       label: t('misc:cardVendors.columns.nickname'),
-      format: (_: any, card: CardData) => editingCard === card.last4_digits ? (
+      format: (_: unknown, card: CardData) => editingCard === card.last4_digits ? (
         <TextField
           key={`nickname-edit-${card.last4_digits}`}
           className={`edit-group-${card.last4_digits}`}
@@ -534,7 +530,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
               handleSave(editingCard, editValues).then((success) => {
                 if (success) {
                   setEditingCard(null);
-                  setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.nicknameSaved'), severity: 'success' });
+                  showSnackbar(t('misc:cardVendors.snackbar.nicknameSaved'), 'success');
                 }
               });
             } else {
@@ -710,7 +706,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
       id: 'bankAccount',
       label: t('misc:cardVendors.columns.bankAccount'),
       minWidth: '200px',
-      format: (_: any, card: CardData) => editingCard === card.last4_digits ? (
+      format: (_: unknown, card: CardData) => editingCard === card.last4_digits ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           <TextField
             key={`bank-edit-${card.last4_digits}`}
@@ -718,9 +714,6 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
             select
             size="small"
             autoFocus={focusedField === 'bankAccount'}
-            SelectProps={{
-              defaultOpen: focusedField === 'bankAccount',
-            }}
             value={editValues.bankAccountId !== null ? editValues.bankAccountId : ''}
             onClick={(e) => e.stopPropagation()}
             onChange={(e) => {
@@ -734,7 +727,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
                     handleSave(editingCard, newValues).then((success) => {
                       if (success) {
                         setEditingCard(null);
-                        setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.bankAccountUpdated'), severity: 'success' });
+                        showSnackbar(t('misc:cardVendors.snackbar.bankAccountUpdated'), 'success');
                       }
                     });
                   }, 200);
@@ -748,6 +741,11 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
               '& .MuiOutlinedInput-root': {
                 borderRadius: '12px',
               },
+            }}
+            slotProps={{
+              select: {
+                defaultOpen: focusedField === 'bankAccount',
+              }
             }}
           >
             <MenuItem value="">
@@ -774,7 +772,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
                     handleSave(editingCard, editValues).then((success) => {
                       if (success) {
                         setEditingCard(null);
-                        setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.customBankSaved'), severity: 'success' });
+                        showSnackbar(t('misc:cardVendors.snackbar.customBankSaved'), 'success');
                       }
                     });
                   }
@@ -830,34 +828,36 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
         </Typography>
       )
     }
-  ], [editingCard, editValues, originalValues, bankAccounts, isSaving, theme, focusedField, t]);
+  ], [editingCard, editValues, originalValues, bankAccounts, theme, focusedField, t, handleEdit, handleSave, showSnackbar]);
 
   return (
     <>
       <Dialog
-        open={isOpen}
+        open={open}
         onClose={onClose}
         maxWidth="xl"
         fullWidth
-        PaperProps={{
-          style: {
-            background: theme.palette.mode === 'dark'
-              ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.default, 0.98)} 100%)`
-              : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%)',
-            backdropFilter: 'blur(20px)',
-            borderRadius: '28px',
-            boxShadow: '0 24px 64px rgba(0, 0, 0, 0.15)',
-            border: `1px solid ${theme.palette.divider}`,
-            maxWidth: '1200px',
+        slotProps={{
+          backdrop: {
+            style: {
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(8px)',
+            },
           },
-        }}
-        BackdropProps={{
-          style: {
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(8px)',
-          },
-        }}
-      >
+
+          paper: {
+            style: {
+              background: theme.palette.mode === 'dark'
+                ? `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.98)} 0%, ${alpha(theme.palette.background.default, 0.98)} 100%)`
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '28px',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.15)',
+              border: `1px solid ${theme.palette.divider}`,
+              maxWidth: '1200px',
+            },
+          }
+        }}>
         <ModalHeader title={t('misc:cardVendors.title')} onClose={onClose} />
         <DialogContent style={{ padding: '0 32px 32px', color: theme.palette.text.primary }}>
           <Typography variant="body2" sx={{ mb: 3, color: theme.palette.text.secondary }}>
@@ -900,7 +900,7 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
                       <Typography
                         sx={{
                           backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                          color: '#6366f1',
+                          color: 'var(--n-primary-500)',
                           padding: '2px 8px',
                           borderRadius: '12px',
                           fontSize: '12px',
@@ -960,7 +960,9 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
                     {editingCard === card.last4_digits && (
                       <Box sx={{ borderTop: `1px solid ${theme.palette.divider}`, pt: 2, mt: 2 }}>
                         {/* Re-use edit fields for mobile if needed, or just show a message to use desktop */}
-                        <Typography variant="caption" color="warning.main">{t('misc:cardVendors.editingDesktopHint')}</Typography>
+                        <Typography variant="caption" sx={{
+                          color: "warning.main"
+                        }}>{t('misc:cardVendors.editingDesktopHint')}</Typography>
                       </Box>
                     )}
                   </Box>
@@ -971,25 +973,17 @@ export default function CardVendorsModal({ isOpen, onClose }: CardVendorsModalPr
           }
         </DialogContent >
       </Dialog >
-
-      <Snackbar
-        open={snackbar.open}
+      <SnackbarFeedback
+        snackbar={snackbar}
+        onClose={hideSnackbar}
         autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
-          sx={{
-            width: '100%',
-            borderRadius: '12px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-          }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        alertSx={{
+          width: '100%',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+        }}
+      />
     </>
   );
 }

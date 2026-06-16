@@ -17,7 +17,6 @@ import { getDB } from '../pages/api/db';
 import { unlockVaultWithPassphrase } from '../utils/vault-utils';
 import VaultStore from '../pages/api/utils/VaultStore';
 import initializeHandler from '../pages/api/vault/initialize';
-import unlockHandler from '../pages/api/vault/unlock';
 import lockHandler from '../pages/api/vault/lock';
 import statusHandler from '../pages/api/vault/status';
 import changePassphraseHandler from '../pages/api/vault/change-passphrase';

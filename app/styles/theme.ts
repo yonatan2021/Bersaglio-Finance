@@ -33,11 +33,11 @@ const baseTheme: ThemeOptions = {
                     '&:active': {
                         transform: 'translateY(0)',
                     },
-                },
-                containedPrimary: {
-                    background: 'var(--n-primary)',
-                    '&:hover': {
-                        background: 'var(--n-primary-hover)',
+                    '&.MuiButton-containedPrimary': {
+                        background: 'var(--n-primary)',
+                        '&:hover': {
+                            background: 'var(--n-primary-hover)',
+                        },
                     },
                 },
             },

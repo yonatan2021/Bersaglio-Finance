@@ -48,29 +48,31 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
             onClose={onClose}
             maxWidth="sm"
             fullWidth
-            PaperProps={{
-                sx: {
-                    borderRadius: '24px',
-                    padding: '8px',
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%)',
-                    backdropFilter: 'blur(20px)',
-                    boxShadow: '0 24px 64px rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.2)',
+            slotProps={{
+                backdrop: {
+                    style: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                        backdropFilter: 'blur(8px)'
+                    }
+                },
+
+                paper: {
+                    sx: {
+                        borderRadius: '24px',
+                        padding: '8px',
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%)',
+                        backdropFilter: 'blur(20px)',
+                        boxShadow: '0 24px 64px rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                    }
                 }
-            }}
-            BackdropProps={{
-                style: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                    backdropFilter: 'blur(8px)'
-                }
-            }}
-        >
+            }}>
             <DialogTitle sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
                 fontWeight: 700,
-                color: '#ef4444',
+                color: 'var(--n-error)',
                 paddingBottom: '8px'
             }}>
                 <Box sx={{
@@ -87,7 +89,6 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
                 </Box>
                 {t('deleteConfirm.title')}
             </DialogTitle>
-
             <DialogContent>
                 <Box sx={{
                     marginTop: '16px',
@@ -129,7 +130,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
                             </Typography>
                             <Typography sx={{
                                 fontSize: '16px',
-                                color: transaction.price < 0 ? '#ef4444' : '#10b981',
+                                color: transaction.price < 0 ? 'var(--n-error)' : 'var(--n-success)',
                                 fontWeight: 700
                             }}>
                                 ₪{formatNumber(Math.abs(transaction.price))}
@@ -152,7 +153,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
                                 </Typography>
                                 <Typography sx={{
                                     fontSize: '13px',
-                                    color: '#3b82f6',
+                                    color: 'var(--n-info)',
                                     fontWeight: 600,
                                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                                     padding: '4px 10px',
@@ -165,7 +166,6 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
                     </Box>
                 </Box>
             </DialogContent>
-
             <DialogActions sx={{ padding: '16px 24px', gap: '12px' }}>
                 <Button
                     onClick={onClose}

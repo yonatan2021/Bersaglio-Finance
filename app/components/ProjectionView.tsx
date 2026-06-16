@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Box, Typography, Paper, Grid, Card, CardContent, CircularProgress, Chip, IconButton, Tooltip as MuiTooltip } from '@mui/material';
+import { Box, Typography, CircularProgress, Chip, IconButton, Tooltip as MuiTooltip } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { LineChart } from '@mui/x-charts/LineChart';
 import PageHeader from './PageHeader';
 import TimelineIcon from '@mui/icons-material/Timeline';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import RepeatIcon from '@mui/icons-material/Repeat';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import BlockIcon from '@mui/icons-material/Block';
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import { format } from 'date-fns';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
+import { useSnackbar, SnackbarState } from './hooks/useSnackbar';
+import SnackbarFeedback from './SnackbarFeedback';
 
 export interface ProjectionData {
     date: string;
@@ -39,7 +37,7 @@ interface NewRecurringState {
 interface ProjectionViewContentProps {
     loading: boolean;
     data: ProjectionData[];
-    accounts: any[];
+    accounts: Array<{ id?: number; account_number: string; nickname?: string; credential_id?: number; balance?: number }>;
     selectedAccount: string | 'total';
     setSelectedAccount: (val: string | 'total') => void;
     categories: string[];
@@ -47,8 +45,8 @@ interface ProjectionViewContentProps {
     setIsAddDialogOpen: (open: boolean) => void;
     newRecurring: NewRecurringState;
     setNewRecurring: React.Dispatch<React.SetStateAction<NewRecurringState>>;
-    snackbar: { open: boolean; message: string; severity: 'success' | 'error' };
-    setSnackbar: React.Dispatch<React.SetStateAction<{ open: boolean; message: string; severity: 'success' | 'error' }>>;
+    snackbar: SnackbarState;
+    hideSnackbar: () => void;
     onRefresh: () => void;
     onToggleVisibility: (accountId: number, e: React.MouseEvent) => void;
     onMarkNotRecurring: (name: string, account_number: string) => void;
@@ -67,9 +65,9 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
     newRecurring,
     setNewRecurring,
     snackbar,
-    setSnackbar,
+    hideSnackbar,
     onRefresh,
-    onToggleVisibility,
+    onToggleVisibility: _onToggleVisibility,
     onMarkNotRecurring,
     onAddRecurring
 }) => {
@@ -173,7 +171,6 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                 icon={<TimelineIcon sx={{ fontSize: 32 }} className="gradient-text" />}
                 onRefresh={onRefresh}
             />
-
             <Box sx={{
                 display: 'flex',
                 flexDirection: { xs: 'column', md: 'row' },
@@ -287,9 +284,7 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                                             scale: '0.6',
                                         }
                                     }}
-                                    slotProps={{
-                                        legend: { hidden: true }
-                                    }}
+                                    hideLegend
                                 >
                                     <defs>
                                         <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -315,7 +310,7 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                                     <Box key={acc.account_number} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: acc.is_bank ? 'primary.main' : 'secondary.main' }} />
                                         <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                                            {acc.nickname}: {formatCurrency(acc.balance)}
+                                            {acc.nickname}: {formatCurrency(acc.balance ?? 0)}
                                         </Typography>
                                     </Box>
                                 ))}
@@ -393,7 +388,7 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                                                     <Box sx={{ flexGrow: 1 }}>
                                                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
                                                             {br.name}
-                                                            {(br as any).is_manual && <Chip label={t('projection.manualBadge')} size="small" sx={{ height: 16, fontSize: '9px', ml: 1, bgcolor: 'secondary.main', color: 'white' }} />}
+                                                            {(br as { is_manual?: boolean }).is_manual && <Chip label={t('projection.manualBadge')} size="small" sx={{ height: 16, fontSize: '9px', ml: 1, bgcolor: 'secondary.main', color: 'white' }} />}
                                                         </Typography>
                                                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('projection.standardRecurring')}</Typography>
                                                     </Box>
@@ -435,25 +430,23 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                     </Box>
                 </Box>
             </Box>
-
-            <Snackbar
-                open={snackbar.open}
+            <SnackbarFeedback
+                snackbar={snackbar}
+                onClose={hideSnackbar}
                 autoHideDuration={4000}
-                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            >
-                <Alert severity={snackbar.severity} sx={{ borderRadius: '12px', fontWeight: 600 }}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
-
+                alertSx={{ borderRadius: '12px', fontWeight: 600 }}
+                showAlertClose={false}
+            />
             {/* Add Recurring Dialog */}
             <Dialog
                 open={isAddDialogOpen}
                 onClose={() => setIsAddDialogOpen(false)}
-                PaperProps={{
-                    className: 'n-glass',
-                    sx: { borderRadius: '24px', width: { xs: '100%', sm: '400px' }, maxWidth: '100%', m: 2 }
+                slotProps={{
+                    paper: {
+                        className: 'n-glass',
+                        sx: { borderRadius: '24px', width: { xs: '100%', sm: '400px' }, maxWidth: '100%', m: 2 }
+                    }
                 }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>{t('projection.dialogTitle')}</DialogTitle>
@@ -503,9 +496,11 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                             type="number"
                             fullWidth
                             variant="outlined"
-                            inputProps={{ min: 1, max: 31 }}
                             value={newRecurring.day_of_month}
                             onChange={(e) => setNewRecurring(prev => ({ ...prev, day_of_month: parseInt(e.target.value) || 1 }))}
+                            slotProps={{
+                                htmlInput: { min: 1, max: 31 }
+                            }}
                         />
                     </Box>
                 </DialogContent>
@@ -530,7 +525,7 @@ const ProjectionView: React.FC = () => {
     const { t } = useTranslation('views');
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<ProjectionData[]>([]);
-    const [accounts, setAccounts] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<ProjectionViewContentProps['accounts']>([]);
     const [selectedAccount, setSelectedAccount] = useState<string | 'total'>('total');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
@@ -543,11 +538,7 @@ const ProjectionView: React.FC = () => {
         frequency: 'monthly'
     });
 
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-        open: false,
-        message: '',
-        severity: 'success'
-    });
+    const { snackbar, showSnackbar, hideSnackbar } = useSnackbar();
 
     const fetchProjection = async () => {
         setLoading(true);
@@ -594,12 +585,12 @@ const ProjectionView: React.FC = () => {
                 }),
             });
             if (!response.ok) throw new Error('Failed to mark as non-recurring');
-            setSnackbar({ open: true, message: t('projection.snackbarExcludedFromProjections', { name }), severity: 'success' });
+            showSnackbar(t('projection.snackbarExcludedFromProjections', { name }), 'success');
             fetchProjection();
             window.dispatchEvent(new CustomEvent('dataRefresh'));
         } catch (err) {
             console.error('Error marking as non-recurring', err);
-            setSnackbar({ open: true, message: t('projection.snackbarFailedExclude'), severity: 'error' });
+            showSnackbar(t('projection.snackbarFailedExclude'), 'error');
         }
     };
 
@@ -608,7 +599,7 @@ const ProjectionView: React.FC = () => {
             const res = await fetch('/api/categories');
             const result = await res.json();
             if (Array.isArray(result)) {
-                setCategories(result.map((c: any) => c.name || c));
+                setCategories(result.map((c: { name?: string } | string) => (typeof c === 'string' ? c : c.name || '')));
             }
         } catch (err) {
             console.error('Failed to fetch categories', err);
@@ -626,7 +617,7 @@ const ProjectionView: React.FC = () => {
                 }),
             });
             if (res.ok) {
-                setSnackbar({ open: true, message: t('projection.snackbarRecurringAdded'), severity: 'success' });
+                showSnackbar(t('projection.snackbarRecurringAdded'), 'success');
                 setIsAddDialogOpen(false);
                 setNewRecurring({
                     name: '',
@@ -640,13 +631,15 @@ const ProjectionView: React.FC = () => {
             }
         } catch (err) {
             console.error('Failed to add recurring', err);
-            setSnackbar({ open: true, message: t('projection.snackbarFailedAddRecurring'), severity: 'error' });
+            showSnackbar(t('projection.snackbarFailedAddRecurring'), 'error');
         }
     };
 
     useEffect(() => {
-        fetchProjection();
-        fetchCategories();
+        queueMicrotask(() => {
+            fetchProjection();
+            fetchCategories();
+        });
     }, []);
 
     return (
@@ -662,7 +655,7 @@ const ProjectionView: React.FC = () => {
             newRecurring={newRecurring}
             setNewRecurring={setNewRecurring}
             snackbar={snackbar}
-            setSnackbar={setSnackbar}
+            hideSnackbar={hideSnackbar}
             onRefresh={fetchProjection}
             onToggleVisibility={handleToggleVisibility}
             onMarkNotRecurring={handleMarkNotRecurring}

@@ -3,7 +3,7 @@ import MobileSortableTable, { SortOption } from '../components/MobileSortableTab
 import { Box, Typography, Chip } from '@mui/material';
 import React, { useState } from 'react';
 
-const meta: Meta<typeof MobileSortableTable<any>> = {
+const meta: Meta<typeof MobileSortableTable<Record<string, unknown>>> = {
     title: 'Design System/MobileSortableTable',
     component: MobileSortableTable,
     parameters: {
@@ -17,7 +17,7 @@ const meta: Meta<typeof MobileSortableTable<any>> = {
 
 export default meta;
 
-type Story = StoryObj<typeof MobileSortableTable<any>>;
+type Story = StoryObj<typeof MobileSortableTable<Record<string, unknown>>>;
 
 interface Transaction {
     id: string;
@@ -93,8 +93,8 @@ const InteractiveWrapper = ({ initialSortField = 'date', initialSortDirection = 
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(initialSortDirection);
 
     const sortedData = [...transactionData].sort((a, b) => {
-        const aVal = (a as any)[sortField];
-        const bVal = (b as any)[sortField];
+        const aVal = (a as unknown as Record<string, unknown>)[sortField];
+        const bVal = (b as unknown as Record<string, unknown>)[sortField];
         const multiplier = sortDirection === 'asc' ? 1 : -1;
 
         if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -135,8 +135,8 @@ export const WithHeader: Story = {
         const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
         const sortedData = [...transactionData].sort((a, b) => {
-            const aVal = (a as any)[sortField];
-            const bVal = (b as any)[sortField];
+            const aVal = (a as unknown as Record<string, unknown>)[sortField];
+            const bVal = (b as unknown as Record<string, unknown>)[sortField];
             const multiplier = sortDirection === 'asc' ? 1 : -1;
 
             if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -187,8 +187,8 @@ export const WithExpandableRows: Story = {
         const [expandedRows, setExpandedRows] = useState<Set<string | number>>(new Set());
 
         const sortedData = [...transactionData].sort((a, b) => {
-            const aVal = (a as any)[sortField];
-            const bVal = (b as any)[sortField];
+            const aVal = (a as unknown as Record<string, unknown>)[sortField];
+            const bVal = (b as unknown as Record<string, unknown>)[sortField];
             const multiplier = sortDirection === 'asc' ? 1 : -1;
 
             if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -252,8 +252,8 @@ export const WithFooter: Story = {
         const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
         const sortedData = [...transactionData].sort((a, b) => {
-            const aVal = (a as any)[sortField];
-            const bVal = (b as any)[sortField];
+            const aVal = (a as unknown as Record<string, unknown>)[sortField];
+            const bVal = (b as unknown as Record<string, unknown>)[sortField];
             const multiplier = sortDirection === 'asc' ? 1 : -1;
 
             if (typeof aVal === 'number' && typeof bVal === 'number') {
@@ -322,8 +322,8 @@ export const EmptyState: Story = {
                         setSortField(field);
                         setSortDirection(direction);
                     }}
-                    rowKey={(row: any) => row.id}
-                    renderCard={(row: any) => <TransactionCard row={row} />}
+                    rowKey={(row: Record<string, unknown>) => row.id as string}
+                    renderCard={(row: Record<string, unknown>) => <TransactionCard row={row as unknown as Transaction} />}
                     emptyMessage="No transactions found"
                 />
             </Box>
@@ -343,8 +343,8 @@ export const ManyOptions: Story = {
         const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
         const sortedData = [...transactionData].sort((a, b) => {
-            const aVal = (a as any)[sortField];
-            const bVal = (b as any)[sortField];
+            const aVal = (a as unknown as Record<string, unknown>)[sortField];
+            const bVal = (b as unknown as Record<string, unknown>)[sortField];
             const multiplier = sortDirection === 'asc' ? 1 : -1;
 
             if (typeof aVal === 'number' && typeof bVal === 'number') {

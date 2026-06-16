@@ -21,7 +21,7 @@ vi.mock('../utils/logger', () => ({
 }));
 
 describe('Scraper Retry Logic', () => {
-    let mockClient;
+    let mockClient: { query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> };
 
     beforeEach(() => {
         // Reset mocks
@@ -211,7 +211,7 @@ describe('Scraper Retry Logic', () => {
         });
 
         it('should calculate correct exponential backoff delays', () => {
-            const calculateDelay = (attempt) => Math.min(5000 * Math.pow(2, attempt - 1), 60000);
+            const calculateDelay = (attempt: number) => Math.min(5000 * Math.pow(2, attempt - 1), 60000);
 
             expect(calculateDelay(1)).toBe(5000);   // 5s
             expect(calculateDelay(2)).toBe(10000);  // 10s

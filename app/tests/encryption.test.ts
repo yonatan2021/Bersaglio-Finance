@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crypto from 'crypto';
 import VaultStore from '../pages/api/utils/VaultStore';
 import { encrypt, decrypt, encryptWithKey, decryptWithKey, getLegacyKey, VaultLockedError } from '../pages/api/utils/encryption';
@@ -70,8 +70,8 @@ describe('Encryption Utility Security', () => {
         expect(() => {
             const decipher = crypto.createDecipheriv(ALGORITHM, WRONG_KEY_BUFFER, iv);
             decipher.setAuthTag(authTag);
-            let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
+            let _decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+            _decrypted += decipher.final('utf8');
         }).toThrow();
     });
 

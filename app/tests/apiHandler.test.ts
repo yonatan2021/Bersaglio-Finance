@@ -9,7 +9,7 @@ vi.mock('../utils/logger.js', () => ({
 }));
 
 import { getDB } from '../pages/api/db';
-import { createApiHandler } from '../pages/api/utils/apiHandler';
+import { createApiHandler } from '../utils/apiHandler';
 
 describe('createApiHandler', () => {
     let mockClient: { query: ReturnType<typeof vi.fn>; release: ReturnType<typeof vi.fn> };

@@ -1,4 +1,4 @@
-import { createApiHandler } from "../utils/apiHandler";
+import { createApiHandler } from "../../../utils/apiHandler";
 import { safeDecrypt } from "../utils/encryption";
 import { getDB } from "../db";
 import { getBillingCycleSql } from "../../../utils/transaction_logic";

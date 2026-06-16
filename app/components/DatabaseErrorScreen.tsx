@@ -58,7 +58,7 @@ const DatabaseErrorScreen: React.FC<DatabaseErrorScreenProps> = ({ onRetry, isRe
     return (
         <Container>
             <IconWrapper>
-                <StorageIcon sx={{ fontSize: '64px', color: '#ef4444' }} />
+                <StorageIcon sx={{ fontSize: '64px', color: 'var(--n-error)' }} />
             </IconWrapper>
             <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, background: 'linear-gradient(to right, #ef4444, #f87171)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 {t('misc:databaseError.title')}

@@ -14,7 +14,13 @@ vi.mock('../pages/api/utils/scraperUtils', () => ({
 
 vi.mock('../pages/api/utils/encryption', () => ({
     decrypt: vi.fn(),
-    encrypt: vi.fn()
+    encrypt: vi.fn(),
+    VaultLockedError: class VaultLockedError extends Error {
+        constructor(message?: string) {
+            super(message);
+            this.name = 'VaultLockedError';
+        }
+    }
 }));
 
 import { getDB } from '../pages/api/db';

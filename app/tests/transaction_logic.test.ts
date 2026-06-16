@@ -1,5 +1,5 @@
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getBillingCycleSql } from '../utils/transaction_logic';
 
 // Mock dependencies for insertTransaction

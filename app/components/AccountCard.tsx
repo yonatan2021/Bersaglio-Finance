@@ -121,7 +121,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
     onDelete,
     onToggleActive,
     onToggleCardVisibility,
-    onUpdateCardLink
+    onUpdateCardLink: _onUpdateCardLink
 }) => {
     const { t } = useTranslation('views');
     const { locale } = useLocale();

@@ -56,10 +56,10 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
                             borderColor: '#e2e8f0',
                         },
                         '&:hover fieldset': {
-                            borderColor: '#3b82f6',
+                            borderColor: 'var(--n-info)',
                         },
                         '&.Mui-focused fieldset': {
-                            borderColor: '#3b82f6',
+                            borderColor: 'var(--n-info)',
                         },
                     },
                 }}
@@ -88,7 +88,7 @@ const CategoryAutocomplete: React.FC<CategoryAutocompleteProps> = ({
                                 sx={{
                                     color: '#94a3b8',
                                     '&.Mui-checked': {
-                                        color: '#3b82f6',
+                                        color: 'var(--n-info)',
                                     },
                                     padding: '2px',
                                 }}

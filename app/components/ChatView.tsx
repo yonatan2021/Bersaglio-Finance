@@ -16,16 +16,14 @@ import {
     Divider,
     Button,
     useMediaQuery,
-    Tooltip,
     Skeleton,
 } from '@mui/material';
 import ForumIcon from '@mui/icons-material/Forum';
 import AddIcon from '@mui/icons-material/Add';
 import SendIcon from '@mui/icons-material/Send';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ChatIcon from '@mui/icons-material/Chat';
 import { useScreenContext } from './Layout';
 import { useTranslation } from 'react-i18next';
@@ -94,7 +92,7 @@ const InputContainer = styled(Box)(({ theme }) => ({
 
 const ChatView: React.FC = () => {
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const _isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { screenContext } = useScreenContext();
     const { t } = useTranslation('views');
     const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -135,7 +133,7 @@ const ChatView: React.FC = () => {
             const response = await fetch(`/api/chat/messages?sessionId=${sessionId}`);
             if (response.ok) {
                 const data = await response.json();
-                setMessages(data.map((m: any) => ({
+                setMessages(data.map((m: { timestamp: string;[key: string]: unknown }) => ({
                     ...m,
                     timestamp: new Date(m.timestamp),
                     status: 'complete'
@@ -288,7 +286,7 @@ const ChatView: React.FC = () => {
             setIsLoading(false);
             setCurrentStatus('');
         }
-    }, [isLoading, currentSessionId, screenContext]);
+    }, [isLoading, currentSessionId, screenContext, t]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -326,9 +324,9 @@ const ChatView: React.FC = () => {
                             fontWeight: 600,
                             py: 1,
                             borderColor: 'rgba(99, 102, 241, 0.3)',
-                            color: '#6366f1',
+                            color: 'var(--n-primary-500)',
                             '&:hover': {
-                                borderColor: '#6366f1',
+                                borderColor: 'var(--n-primary-500)',
                                 backgroundColor: 'rgba(99, 102, 241, 0.04)',
                             }
                         }}
@@ -365,7 +363,7 @@ const ChatView: React.FC = () => {
                                             }
                                         }}
                                     >
-                                        <ListItemIcon sx={{ minWidth: 36, color: currentSessionId === session.id ? '#6366f1' : 'text.secondary' }}>
+                                        <ListItemIcon sx={{ minWidth: 36, color: currentSessionId === session.id ? 'var(--n-primary-500)' : 'text.secondary' }}>
                                             <ChatIcon fontSize="small" />
                                         </ListItemIcon>
                                         <ListItemText
@@ -383,7 +381,7 @@ const ChatView: React.FC = () => {
                                         <IconButton
                                             size="small"
                                             onClick={(e) => deleteSession(e, session.id)}
-                                            sx={{ opacity: 0, '.MuiListItemButton-root:hover &': { opacity: 0.6 }, '&:hover': { opacity: 1, color: '#ef4444' } }}
+                                            sx={{ opacity: 0, '.MuiListItemButton-root:hover &': { opacity: 0.6 }, '&:hover': { opacity: 1, color: 'var(--n-error)' } }}
                                         >
                                             <DeleteOutlineIcon fontSize="small" />
                                         </IconButton>
@@ -431,7 +429,7 @@ const ChatView: React.FC = () => {
                                             textTransform: 'none',
                                             borderColor: 'divider',
                                             color: 'text.secondary',
-                                            '&:hover': { borderColor: '#6366f1', color: '#6366f1' }
+                                            '&:hover': { borderColor: 'var(--n-primary-500)', color: 'var(--n-primary-500)' }
                                         }}
                                     >
                                         {q}
@@ -480,13 +478,13 @@ const ChatView: React.FC = () => {
                                                 sx={{
                                                     fontSize: '0.95rem',
                                                     lineHeight: 1.6,
-                                                    color: msg.status === 'error' ? '#ef4444' : 'inherit',
+                                                    color: msg.status === 'error' ? 'var(--n-error)' : 'inherit',
                                                     fontWeight: msg.status === 'error' ? 600 : 400
                                                 }}
                                             />
                                         ) : (
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.5 }}>
-                                                <CircularProgress size={16} sx={{ color: msg.role === 'user' ? 'white' : '#6366f1' }} />
+                                                <CircularProgress size={16} sx={{ color: msg.role === 'user' ? 'white' : 'var(--n-primary-500)' }} />
                                                 <Typography variant="body2" sx={{ opacity: 0.8 }}>{currentStatus || t('chat.thinking')}</Typography>
                                             </Box>
                                         )}

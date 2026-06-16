@@ -1,4 +1,4 @@
-import { createApiHandler } from "../utils/apiHandler";
+import { createApiHandler } from "../../../utils/apiHandler";
 import { decrypt, encrypt, safeDecrypt } from "../utils/encryption";
 
 const ALLOWED_METHODS = ['DELETE', 'GET', 'PATCH', 'PUT'];

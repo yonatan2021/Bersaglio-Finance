@@ -14,6 +14,7 @@ vi.mock('../pages/api/utils/encryption', () => ({
     decrypt: vi.fn((text) => text.replace('encrypted:', '')),
     safeDecrypt: vi.fn((text) => text.replace('encrypted:', '')),
     VaultLockedError: class VaultLockedError extends Error {
+        status: number;
         constructor() {
             super('Vault is locked');
             this.name = 'VaultLockedError';
@@ -23,7 +24,7 @@ vi.mock('../pages/api/utils/encryption', () => ({
 }));
 
 import { getDB } from '../pages/api/db';
-import { encrypt, decrypt } from '../pages/api/utils/encryption';
+import { encrypt } from '../pages/api/utils/encryption';
 import credentialsHandler from '../pages/api/credentials/index';
 import credentialByIdHandler from '../pages/api/credentials/[id]';
 import truncateHandler from '../pages/api/credentials/truncate/[id]';

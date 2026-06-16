@@ -1,7 +1,7 @@
 /**
  * Formats a date as YYYY-MM-DD in local time.
  * This avoids the common issue where toISOString() shifts the date due to UTC conversion.
- * @param {Date|string|number} date 
+ * @param {Date | string | number | null | undefined} date
  * @returns {string} YYYY-MM-DD
  */
 export function formatISODate(date) {

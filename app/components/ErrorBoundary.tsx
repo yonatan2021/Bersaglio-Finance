@@ -69,7 +69,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           <Typography variant="h5" color="error">
             {this.state.isChunkError ? i18n.t('misc:errorBoundary.updateTitle') : i18n.t('misc:errorBoundary.errorTitle')}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" sx={{
+            color: "text.secondary"
+          }}>
             {this.state.isChunkError
               ? i18n.t('misc:errorBoundary.updateDescription')
               : i18n.t('misc:errorBoundary.errorDescription')}

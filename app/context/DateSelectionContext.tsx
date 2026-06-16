@@ -226,7 +226,7 @@ export const DateSelectionProvider: React.FC<{ children: React.ReactNode }> = ({
     }, [customEndDate, customStartDate]);
 
     useEffect(() => {
-        init();
+        queueMicrotask(init);
     }, [init]);
 
     // Handle Year Change

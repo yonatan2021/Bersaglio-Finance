@@ -83,9 +83,9 @@ const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({ open, onClose }) =>
     };
 
     useEffect(() => {
-        if (open) {
-            fetchScreenshots();
-        }
+        if (!open) return;
+        queueMicrotask(fetchScreenshots);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchScreenshots is stable; intentionally excluded
     }, [open]);
 
     return (
@@ -95,14 +95,16 @@ const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({ open, onClose }) =>
                 onClose={onClose}
                 maxWidth="md"
                 fullWidth
-                PaperProps={{
-                    sx: {
-                        background: theme.palette.mode === 'dark'
-                            ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)'
-                            : 'rgba(255, 255, 255, 0.95)',
-                        backdropFilter: 'blur(20px)',
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: '16px',
+                slotProps={{
+                    paper: {
+                        sx: {
+                            background: theme.palette.mode === 'dark'
+                                ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)'
+                                : 'rgba(255, 255, 255, 0.95)',
+                            backdropFilter: 'blur(20px)',
+                            border: `1px solid ${theme.palette.divider}`,
+                            borderRadius: '16px',
+                        }
                     }
                 }}
             >
@@ -138,7 +140,13 @@ const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({ open, onClose }) =>
                     ) : (
                         <Grid container spacing={2}>
                             {screenshots.map((s) => (
-                                <Grid item xs={12} sm={6} md={4} key={s.filename}>
+                                <Grid
+                                    key={s.filename}
+                                    size={{
+                                        xs: 12,
+                                        sm: 6,
+                                        md: 4
+                                    }}>
                                     <Card variant="outlined" sx={{ borderRadius: 2 }}>
                                         <CardActionArea onClick={() => setSelectedImage(s.url)}>
                                             <CardMedia
@@ -151,7 +159,12 @@ const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({ open, onClose }) =>
                                                 <Typography variant="subtitle2" noWrap>
                                                     {s.companyId} - {s.stepName}
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary" display="block">
+                                                <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                        color: "text.secondary",
+                                                        display: "block"
+                                                    }}>
                                                     {new Date(s.timestamp).toLocaleString(dateLocale)} • {(s.size / 1024).toFixed(1)} KB
                                                 </Typography>
                                             </CardContent>
@@ -166,7 +179,6 @@ const ScreenshotViewer: React.FC<ScreenshotViewerProps> = ({ open, onClose }) =>
                     <Button onClick={onClose}>{t('common:actions.close')}</Button>
                 </DialogActions>
             </Dialog>
-
             {/* Full screen image viewer */}
             <Dialog
                 open={!!selectedImage}

@@ -3,6 +3,7 @@ import Table, { Column } from '../components/Table';
 import { Box, Typography, Chip } from '@mui/material';
 import React from 'react';
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- stories use multiple row shapes; the generic on the component is intentionally widened */
 const meta: Meta<typeof Table<any>> = {
     title: 'Design System/Tables',
     component: Table,
@@ -15,6 +16,7 @@ const meta: Meta<typeof Table<any>> = {
 export default meta;
 
 type Story = StoryObj<typeof Table<any>>;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Transaction {
     id: string;
@@ -56,7 +58,7 @@ const transactionColumns: Column<Transaction>[] = [
         id: 'amount',
         label: 'Amount',
         align: 'right',
-        format: (val, row) => (
+        format: (val, _row) => (
             <span style={{
                 fontWeight: 700,
                 color: val > 0 ? 'var(--n-success)' : val < 0 ? 'var(--n-error)' : 'var(--n-text-primary)'
@@ -71,7 +73,7 @@ export const BasicTable: Story = {
     args: {
         columns: transactionColumns,
         rows: transactionData,
-        rowKey: (row: any) => row.id,
+        rowKey: (row: Transaction) => row.id,
     },
     render: (args) => (
         <Box sx={{ p: 4, bgcolor: 'var(--n-bg-main)' }}>
@@ -136,7 +138,9 @@ const paymentColumns: Column<Payment>[] = [
                     </Box>
                 </Box>
             ) : (
-                <Typography variant="caption" color="text.secondary">Monthly</Typography>
+                <Typography variant="caption" sx={{
+                    color: "text.secondary"
+                }}>Monthly</Typography>
             )
         )
     },
@@ -180,7 +184,7 @@ export const AdvancedTable: Story = {
     args: {
         columns: paymentColumns,
         rows: paymentData,
-        rowKey: (row: any) => row.id,
+        rowKey: (row: Payment) => row.id,
     },
     render: (args) => (
         <Box sx={{ p: 4, bgcolor: 'var(--n-bg-main)', minWidth: '800px' }}>
@@ -199,17 +203,23 @@ export const MobileView: Story = {
     args: {
         columns: transactionColumns,
         rows: transactionData,
-        rowKey: (row: any) => row.id,
-        mobileCardRenderer: (row: any) => (
+        rowKey: (row: Transaction) => row.id,
+        mobileCardRenderer: (row: Transaction) => (
             <Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="subtitle2" fontWeight={700}>{row.desc}</Typography>
-                    <Typography variant="subtitle2" fontWeight={700} color={row.amount > 0 ? 'success.main' : row.amount < 0 ? 'error.main' : 'text.primary'}>
+                    <Typography variant="subtitle2" sx={{
+                        fontWeight: 700
+                    }}>{row.desc}</Typography>
+                    <Typography variant="subtitle2" color={row.amount > 0 ? 'success.main' : row.amount < 0 ? 'error.main' : 'text.primary'} sx={{
+                        fontWeight: 700
+                    }}>
                         {row.amount < 0 ? `-₪${Math.abs(row.amount)}` : `₪${row.amount}`}
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="caption" color="text.secondary">{row.date}</Typography>
+                    <Typography variant="caption" sx={{
+                        color: "text.secondary"
+                    }}>{row.date}</Typography>
                     <Box sx={{
                         px: 1.5, py: 0.5,
                         borderRadius: '999px',

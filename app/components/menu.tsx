@@ -51,7 +51,7 @@ import { useStatus } from '../context/StatusContext';
 import { useTranslation } from 'react-i18next';
 
 const ScrapeModal = dynamic(() => import('./ScrapeModal'), { ssr: false });
-const AccountsModal = dynamic(() => import('./AccountsModal'), { ssr: false });
+const _AccountsModal = dynamic(() => import('./AccountsModal'), { ssr: false });
 const CategoryManagementModal = dynamic(() => import('./CategoryDashboard/components/CategoryManagementModal'), { ssr: false });
 const CardVendorsModal = dynamic(() => import('./CardVendorsModal'), { ssr: false });
 const DatabaseBackupModal = dynamic(() => import('./DatabaseBackupModal'), { ssr: false });
@@ -469,7 +469,7 @@ function ResponsiveAppBar({ currentView = 'summary', onViewChange }: ResponsiveA
         {drawerContent(false)}
       </Drawer>
       <ScrapeModal
-        isOpen={isScrapeModalOpen}
+        open={isScrapeModalOpen}
         onClose={() => setIsScrapeModalOpen(false)}
         onSuccess={handleScrapeSuccess}
       />
@@ -482,7 +482,7 @@ function ResponsiveAppBar({ currentView = 'summary', onViewChange }: ResponsiveA
         }}
       />
       <CardVendorsModal
-        isOpen={isCardVendorsOpen}
+        open={isCardVendorsOpen}
         onClose={() => setIsCardVendorsOpen(false)}
       />
       <DatabaseBackupModal

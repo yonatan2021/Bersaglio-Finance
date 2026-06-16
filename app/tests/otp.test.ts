@@ -85,7 +85,7 @@ describe('OTP API Handler', () => {
 
         it('should supersede previous pending OTP request', async () => {
             const first = waitForOtp('hapoalim', 5000);
-            const second = waitForOtp('discount', 5000).catch(() => { });
+            const _second = waitForOtp('discount', 5000).catch(() => { });
 
             await expect(first).rejects.toThrow(/superseded/);
             expect((global as any).otpStore.companyId).toBe('discount');

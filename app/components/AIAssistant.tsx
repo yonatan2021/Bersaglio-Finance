@@ -17,8 +17,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import StorageIcon from '@mui/icons-material/Storage';
 import CloseIcon from '@mui/icons-material/Close';
 import HistoryIcon from '@mui/icons-material/History';
@@ -135,7 +134,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
         setInitialPrompt('');
       }
     }
-  }, [initialPrompt, isOpen]); // removed dependency on sendMessage to avoid loop, it's useCallback anyway
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sendMessage/setInitialPrompt/isLoading intentionally excluded to avoid send loop
+  }, [initialPrompt, isOpen]);
 
   const fetchSessions = async () => {
     try {
@@ -156,7 +156,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
       const response = await fetch(`/api/chat/messages?sessionId=${sessionId}`);
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.map((m: any) => ({
+        setMessages(data.map((m: { timestamp: string;[key: string]: unknown }) => ({
           ...m,
           timestamp: new Date(m.timestamp),
           status: 'complete'
@@ -344,7 +344,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
       // If session was created, ensure title is updated
       fetchSessions();
     }
-  }, [isLoading, screenContext, currentSessionId]);
+  }, [isLoading, screenContext, currentSessionId, t]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,18 +381,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
         keepMounted: true, // Better open performance
         hideBackdrop: !isMobile, // No backdrop on desktop to allow interaction
       }}
-      PaperProps={{
-        sx: {
-          width: isMobile ? '100%' : 400,
-          background: theme.palette.mode === 'dark'
-            ? 'rgba(15, 23, 42, 0.95)'
-            : 'rgba(255, 255, 255, 0.98)',
-          backdropFilter: 'blur(12px)',
-          borderLeft: `1px solid ${theme.palette.divider}`,
-          boxShadow: '-4px 0 20px rgba(0,0,0,0.1)'
+      transitionDuration={300}
+      slotProps={{
+        paper: {
+          sx: {
+            width: isMobile ? '100%' : 400,
+            background: theme.palette.mode === 'dark'
+              ? 'rgba(15, 23, 42, 0.95)'
+              : 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(12px)',
+            borderLeft: `1px solid ${theme.palette.divider}`,
+            boxShadow: '-4px 0 20px rgba(0,0,0,0.1)'
+          }
         }
       }}
-      transitionDuration={300}
     >
       {/* Header */}
       <Box
@@ -421,10 +423,17 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
         </Box>
 
         <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 700,
+              lineHeight: 1.2
+            }}>
             {t('chat.title')}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" sx={{
+            color: "text.secondary"
+          }}>
             {currentSessionId
               ? sessions.find(s => s.id === currentSessionId)?.title || t('chat.currentSession')
               : t('chat.newConversation')}
@@ -438,13 +447,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
           <CloseIcon />
         </IconButton>
       </Box>
-
       {/* Content Area */}
       <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
         {showHistory ? (
           // HISTORY VIEW
-          <Box sx={{ flex: 1, overflowY: 'auto' }}>
+          (<Box sx={{ flex: 1, overflowY: 'auto' }}>
             <Box sx={{ p: 2 }}>
               <ListItemButton
                 onClick={startNewChat}
@@ -459,7 +467,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
                 }}
               >
                 <AddIcon sx={{ mr: 1 }} />
-                <Typography fontWeight={600}>{t('chat.newChat')}</Typography>
+                <Typography sx={{
+                  fontWeight: 600
+                }}>{t('chat.newChat')}</Typography>
               </ListItemButton>
 
               <Typography variant="overline" sx={{ px: 1, color: 'text.secondary', fontWeight: 700 }}>
@@ -492,10 +502,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
                       <ListItemText
                         primary={session.title || t('chat.untitledConversation')}
                         secondary={new Date(session.updated_at).toLocaleDateString(dateLocale)}
-                        primaryTypographyProps={{
-                          noWrap: true,
-                          fontSize: '0.9rem',
-                          fontWeight: currentSessionId === session.id ? 600 : 400
+                        slotProps={{
+                          primary: {
+                            noWrap: true,
+                            sx: { fontSize: '0.9rem', fontWeight: currentSessionId === session.id ? 600 : 400 }
+                          }
                         }}
                       />
                     </ListItemButton>
@@ -509,16 +520,20 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
                 </Box>
               )}
             </Box>
-          </Box>
+          </Box>)
         ) : (
           // CHAT VIEW
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
+          (<Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Messages */}
             <Box sx={{ flex: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
               {messages.length === 0 && !isLoading ? (
                 <Box sx={{ mt: 4, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      mb: 3
+                    }}>
                     {t('chat.emptyStateAssistantHint')}<br />{t('chat.tryAsking')}
                   </Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -624,7 +639,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
               )}
               <div ref={messagesEndRef} />
             </Box>
-
             {/* Input */}
             <Box sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}`, background: theme.palette.background.paper }}>
               <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 10 }}>
@@ -668,8 +682,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
                 </IconButton>
               </form>
             </Box>
-
-          </Box>
+          </Box>)
         )}
 
       </Box>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- stories use loose types so the wrappers can spread varying arg shapes into the wrapped component */
 import type { Meta, StoryObj } from '@storybook/react';
 import React, { useState } from 'react';
 import { Button } from '@mui/material';

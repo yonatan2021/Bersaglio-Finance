@@ -308,16 +308,18 @@ const MobileSortableTable = <T,>({
                 onClose={() => setMenuAnchor(null)}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                PaperProps={{
-                    sx: {
-                        mt: 1,
-                        borderRadius: 'var(--n-radius-lg)',
-                        minWidth: 180,
-                        background: theme.palette.mode === 'dark'
-                            ? 'rgba(30, 41, 59, 0.95)'
-                            : 'rgba(255, 255, 255, 0.98)',
-                        backdropFilter: 'blur(12px)',
-                        border: `1px solid ${theme.palette.divider}`,
+                slotProps={{
+                    paper: {
+                        sx: {
+                            mt: 1,
+                            borderRadius: 'var(--n-radius-lg)',
+                            minWidth: 180,
+                            background: theme.palette.mode === 'dark'
+                                ? 'rgba(30, 41, 59, 0.95)'
+                                : 'rgba(255, 255, 255, 0.98)',
+                            backdropFilter: 'blur(12px)',
+                            border: `1px solid ${theme.palette.divider}`,
+                        }
                     }
                 }}
             >

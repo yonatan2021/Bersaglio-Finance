@@ -17,7 +17,9 @@ export const AllVariants: StoryObj = {
         <Box sx={{ p: 4, bgcolor: 'var(--n-bg-main)' }}>
             <Stack spacing={4}>
                 <Box>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">Contained</Typography>
+                    <Typography variant="subtitle2" gutterBottom sx={{
+                        color: "text.secondary"
+                    }}>Contained</Typography>
                     <Stack direction="row" spacing={2}>
                         <Button variant="contained" color="primary">Primary</Button>
                         <Button variant="contained" color="secondary">Secondary</Button>
@@ -26,7 +28,9 @@ export const AllVariants: StoryObj = {
                 </Box>
 
                 <Box>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">Outlined</Typography>
+                    <Typography variant="subtitle2" gutterBottom sx={{
+                        color: "text.secondary"
+                    }}>Outlined</Typography>
                     <Stack direction="row" spacing={2}>
                         <Button variant="outlined" color="primary">Primary</Button>
                         <Button variant="outlined" color="secondary">Secondary</Button>
@@ -35,7 +39,9 @@ export const AllVariants: StoryObj = {
                 </Box>
 
                 <Box>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">Text</Typography>
+                    <Typography variant="subtitle2" gutterBottom sx={{
+                        color: "text.secondary"
+                    }}>Text</Typography>
                     <Stack direction="row" spacing={2}>
                         <Button variant="text" color="primary">Primary</Button>
                         <Button variant="text" color="secondary">Secondary</Button>
@@ -44,8 +50,12 @@ export const AllVariants: StoryObj = {
                 </Box>
 
                 <Box>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">Sizes</Typography>
-                    <Stack direction="row" spacing={2} alignItems="center">
+                    <Typography variant="subtitle2" gutterBottom sx={{
+                        color: "text.secondary"
+                    }}>Sizes</Typography>
+                    <Stack direction="row" spacing={2} sx={{
+                        alignItems: "center"
+                    }}>
                         <Button variant="contained" size="small">Small</Button>
                         <Button variant="contained" size="medium">Medium</Button>
                         <Button variant="contained" size="large">Large</Button>
@@ -53,7 +63,9 @@ export const AllVariants: StoryObj = {
                 </Box>
 
                 <Box>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">Vanilla Counterparts</Typography>
+                    <Typography variant="subtitle2" gutterBottom sx={{
+                        color: "text.secondary"
+                    }}>Vanilla Counterparts</Typography>
                     <Stack direction="row" spacing={2}>
                         <button className="n-btn n-btn-primary">Vanilla Primary</button>
                         <button className="n-btn n-btn-outline">Vanilla Outline</button>

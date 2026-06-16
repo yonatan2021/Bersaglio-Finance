@@ -1,4 +1,4 @@
-import { createApiHandler } from "../utils/apiHandler";
+import { createApiHandler } from "../../../utils/apiHandler";
 import { encrypt, decrypt, safeDecrypt } from "../utils/encryption";
 
 const handler = createApiHandler({

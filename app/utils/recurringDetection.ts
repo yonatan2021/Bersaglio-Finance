@@ -45,7 +45,8 @@ export interface DetectedRecurringPayment {
  */
 export function detectRecurringPayments(transactions: DetectionTransaction[]): DetectedRecurringPayment[] {
     // 1. Group by normalized name and card
-    const groups: Record<string, any[]> = {};
+    type ProcessedTransaction = Omit<DetectionTransaction, 'date'> & { date: Date; price_raw: number };
+    const groups: Record<string, ProcessedTransaction[]> = {};
     transactions.forEach(t => {
         const normalizedName = t.name.toLowerCase().trim();
         const cardId = t.account_number || t.vendor || 'unknown';
@@ -68,7 +69,7 @@ export function detectRecurringPayments(transactions: DetectionTransaction[]): D
 
         // 2. Cluster by amount (fuzzy matching)
         // We use a 10% tolerance for "close enough" amounts or 5 currency units
-        const clusters: Array<{ items: any[], totalAmount: number }> = [];
+        const clusters: Array<{ items: ProcessedTransaction[], totalAmount: number }> = [];
         groupTransactions.forEach(t => {
             let found = false;
             for (const cluster of clusters) {

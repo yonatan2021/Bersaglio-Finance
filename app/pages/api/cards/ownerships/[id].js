@@ -1,4 +1,4 @@
-import { createApiHandler } from "../../utils/apiHandler";
+import { createApiHandler } from "../../../../utils/apiHandler";
 import { getDB } from "../../db";
 import logger from '../../../../utils/logger.js';
 

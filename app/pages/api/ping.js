@@ -1,20 +1,9 @@
-import { getDB } from "./db";
-import logger from '../../utils/logger.js';
+import { withDB } from "../../utils/withDB";
 
-export default async function handler(req, res) {
+export default withDB(async (req, res, client) => {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  const client = await getDB();
-  try {
-    // Simple query to check connection
-    await client.query('SELECT 1');
-    res.status(200).json({ status: 'ok' });
-  } catch (error) {
-    logger.error({ error: error.message, stack: error.stack }, 'Ping check failed');
-    res.status(500).json({ status: 'error', error: 'Database connection failed' });
-  } finally {
-    client.release();
-  }
-} 
+  await client.query('SELECT 1');
+  res.status(200).json({ status: 'ok' });
+});

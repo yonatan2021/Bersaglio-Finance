@@ -30,7 +30,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
     onClick,
     formatCurrency
 }) => {
-    const theme = useTheme();
+    const _theme = useTheme();
     const { t } = useTranslation(['tx', 'common']);
 
     return (

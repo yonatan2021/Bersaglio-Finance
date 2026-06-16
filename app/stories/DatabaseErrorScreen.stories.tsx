@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import React from 'react';
 import DatabaseErrorScreen from '../components/DatabaseErrorScreen';
 
 const meta: Meta<typeof DatabaseErrorScreen> = {

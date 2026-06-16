@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Typography, Container, Divider } from '@mui/material';
+import Image from 'next/image';
+import { Box, Typography, Container } from '@mui/material';
 import { styled, useTheme } from '@mui/material/styles';
 import packageJson from '../package.json';
 
@@ -43,20 +44,18 @@ const VersionTag = styled(Typography)(({ theme }) => ({
 }));
 
 const Footer: React.FC = () => {
-    const theme = useTheme();
+    const _theme = useTheme();
 
     return (
         <StyledFooter>
             <FooterContainer maxWidth="xl">
                 <LogoSection>
-                    <img
+                    <Image
                         src="/nudlers-logo.svg"
                         alt="Nudlers Logo"
-                        style={{
-                            width: '20px',
-                            height: '20px',
-                            objectFit: 'contain'
-                        }}
+                        width={20}
+                        height={20}
+                        style={{ objectFit: 'contain' }}
                     />
                     <Typography
                         variant="body2"

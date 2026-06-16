@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../../app/utils/dateUtils.js', async () => {
     const actual = await vi.importActual('../../app/utils/dateUtils.js') as any;

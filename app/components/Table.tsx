@@ -22,6 +22,7 @@ export interface Column<T> {
     label: string | React.ReactNode;
     align?: 'left' | 'center' | 'right';
     minWidth?: string | number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- column cells hold heterogeneous values; row-specific typing is enforced via the T generic
     format?: (value: any, row: T) => React.ReactNode;
     sortable?: boolean;
 }
@@ -39,7 +40,7 @@ export interface TableProps<T> {
     mobileCardRenderer?: (row: T) => React.ReactNode;
     footer?: React.ReactNode;
     renderSubRow?: (row: T) => React.ReactNode;
-    expandedRowIds?: Set<any>;
+    expandedRowIds?: Set<string | number>;
     onRowToggle?: (rowId: string | number) => void;
     stickyHeader?: boolean;
     maxHeight?: string | number;
@@ -224,10 +225,10 @@ const Table = <T,>({
                                     }}
                                 >
                                     {columns.map((column) => {
-                                        const value = (row as any)[column.id];
+                                        const value = (row as Record<string, unknown>)[column.id];
                                         return (
                                             <TableCell key={column.id} align={column.align || 'left'} sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                                                {column.format ? column.format(value, row) : value}
+                                                {column.format ? column.format(value, row) : (value as React.ReactNode)}
                                             </TableCell>
                                         );
                                     })}

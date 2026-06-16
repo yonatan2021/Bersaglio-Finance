@@ -1,13 +1,12 @@
-import { getDB } from '../db';
 import logger from '../../../utils/logger.js';
+import { withDB } from '../../../utils/withDB';
 import { stopAllScrapers } from '../utils/scraperUtils';
 
-export default async function handler(req, res) {
+export default withDB(async (req, res, client) => {
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Method not allowed' });
     }
 
-    const client = await getDB();
     try {
         await stopAllScrapers(client);
         res.status(200).json({
@@ -20,7 +19,5 @@ export default async function handler(req, res) {
             success: false,
             message: 'Failed to stop scrapers.'
         });
-    } finally {
-        client.release();
     }
-}
+});

@@ -35,7 +35,9 @@ export const Showcase: StoryObj = {
                         <Typography variant="h3" sx={{ fontWeight: 800 }}>
                             {"₪"}42,500
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{
+                            color: "text.secondary"
+                        }}>
                             vs. last month {"₪"}37,800
                         </Typography>
                     </Box>
@@ -82,7 +84,9 @@ export const HeroSection: StoryObj = {
                 alignItems: 'center',
                 border: '1px solid var(--n-border)'
             }}>
-                <Stack direction="row" spacing={2} alignItems="center">
+                <Stack direction="row" spacing={2} sx={{
+                    alignItems: "center"
+                }}>
                     <Box sx={{ bgcolor: 'rgba(99, 102, 241, 0.1)', p: 1.5, borderRadius: '16px' }}>
                         <SavingsIcon sx={{ color: 'var(--n-primary)', fontSize: 32 }} />
                     </Box>
@@ -90,7 +94,9 @@ export const HeroSection: StoryObj = {
                         <Typography variant="h4" className="gradient-text" sx={{ fontWeight: 800 }}>
                             Monthly Dashboard
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" sx={{
+                            color: "text.secondary"
+                        }}>
                             Analyze your financial health and spending patterns
                         </Typography>
                     </Box>
@@ -126,7 +132,9 @@ export const BudgetTracker: StoryObj = {
                     <Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                             <Typography variant="h5" sx={{ fontWeight: 800 }}>₪3,240</Typography>
-                            <Typography variant="body2" color="text.secondary">Limit: ₪3,000</Typography>
+                            <Typography variant="body2" sx={{
+                                color: "text.secondary"
+                            }}>Limit: ₪3,000</Typography>
                         </Box>
                         <Box sx={{ width: '100%', height: 8, bgcolor: 'var(--n-bg-surface-alt)', borderRadius: 4, overflow: 'hidden' }}>
                             <Box sx={{ width: '100%', height: '100%', bgcolor: 'var(--n-error)' }} />

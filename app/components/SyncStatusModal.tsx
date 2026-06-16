@@ -32,6 +32,7 @@ import CloudOffIcon from '@mui/icons-material/CloudOff';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import TimerIcon from '@mui/icons-material/Timer';
 import { BEINLEUMI_GROUP_VENDORS, BANK_VENDORS } from '../utils/constants';
+import { formatISODate } from '../utils/dateUtils';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import dynamic from 'next/dynamic';
@@ -66,7 +67,7 @@ interface SyncStatusModalProps {
   onSyncSuccess?: () => void;
 }
 
-interface SyncStatus {
+interface _SyncStatus {
   syncHealth: string;
   settings: {
     enabled: boolean;
@@ -437,7 +438,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
       setSyncProgress(null);
       setSyncStartTime(null);
     }
-  }, [status, isSyncing, isInitializing, isStopping]);
+  }, [status, isSyncing, isInitializing, isStopping, t]);
   // Initial fetch and start
   useEffect(() => {
     if (open) {
@@ -458,6 +459,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
     };
     window.addEventListener('triggerSync', handleTriggerSync);
     return () => window.removeEventListener('triggerSync', handleTriggerSync);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prepareSyncOptionsForAccount declared below; closure captures it correctly at runtime
   }, [status?.settings?.daysBack]);
 
   // Clear pending sync request when drawer closes
@@ -507,13 +509,13 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
       const startDate = lastDate ? new Date(lastDate) : new Date();
       const daysBack = status?.settings?.daysBack || 30;
       startDate.setDate(startDate.getDate() - daysBack);
-      const computed = startDate.toISOString().split('T')[0];
+      const computed = formatISODate(startDate);
       setSyncOptionsStartDate(computed);
       setSyncOptionsDateError(validateSyncDate(computed));
     } catch {
       const fallback = new Date();
       fallback.setDate(fallback.getDate() - 30);
-      const computed = fallback.toISOString().split('T')[0];
+      const computed = formatISODate(fallback);
       setSyncOptionsStartDate(computed);
       setSyncOptionsDateError(validateSyncDate(computed));
     } finally {
@@ -890,7 +892,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
           const startDate = lastDate ? new Date(lastDate) : new Date();
           const daysBack = status?.settings?.daysBack || 30;
           startDate.setDate(startDate.getDate() - daysBack);
-          computedStartDate = startDate.toISOString().split('T')[0];
+          computedStartDate = formatISODate(startDate);
         }
 
         const credentials = prepareCredentials(account, account.vendor);
@@ -1137,21 +1139,21 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
         return {
           icon: <ErrorIcon sx={{ fontSize: 48 }} />,
           label: t('health.error.label'),
-          color: '#ef4444',
+          color: 'var(--n-error)',
           description: t('health.error.description')
         };
       case 'stale':
         return {
           icon: <WarningIcon sx={{ fontSize: 48 }} />,
           label: t('health.stale.label'),
-          color: '#f59e0b',
+          color: 'var(--n-warning)',
           description: t('health.stale.description')
         };
       case 'outdated':
         return {
           icon: <WarningIcon sx={{ fontSize: 48 }} />,
           label: t('health.outdated.label'),
-          color: '#f59e0b',
+          color: 'var(--n-warning)',
           description: t('health.outdated.description')
         };
       case 'never_synced':
@@ -1258,7 +1260,6 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
           </Tooltip>
         </Box>
       </Box>
-
       {/* Content */}
       <Box sx={{ p: 2, overflowY: 'auto', flex: 1 }}>
         {pendingSyncRequest && !isSyncing && !showReport ? (
@@ -1300,7 +1301,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                   {t('options.showBrowser')}
                 </Typography>
                 {pendingSyncRequest.vendor === 'hapoalim' && (
-                  <Typography variant="caption" sx={{ color: '#3b82f6', fontSize: '10px' }}>
+                  <Typography variant="caption" sx={{ color: 'var(--n-info)', fontSize: '10px' }}>
                     {t('options.showBrowserHapoalimHint')}
                   </Typography>
                 )}
@@ -1402,7 +1403,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                             <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#fff' }} />
                           </Box>
                         ) : isFailed ? (
-                          <ErrorIcon sx={{ fontSize: 18, color: '#ef4444' }} />
+                          <ErrorIcon sx={{ fontSize: 18, color: 'var(--n-error)' }} />
                         ) : isActive ? (
                           <SyncIcon sx={{ fontSize: 18, color: '#60a5fa', animation: `${spin} 2s linear infinite` }} />
                         ) : (
@@ -1411,7 +1412,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
 
                         <Box sx={{ flex: 1 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="body2" sx={{ fontWeight: isActive ? 600 : 500, color: isActive ? '#60a5fa' : isCompleted ? '#22c55e' : isFailed ? '#ef4444' : 'text.secondary' }}>
+                            <Typography variant="body2" sx={{ fontWeight: isActive ? 600 : 500, color: isActive ? '#60a5fa' : isCompleted ? '#22c55e' : isFailed ? 'var(--n-error)' : 'text.secondary' }}>
                               {item.accountName}
                             </Typography>
                             {isCompleted && (
@@ -1464,8 +1465,8 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                                   border: '1px solid rgba(59, 130, 246, 0.3)'
                                 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                    <LockIcon sx={{ fontSize: 16, color: '#3b82f6' }} />
-                                    <Typography variant="caption" sx={{ fontWeight: 600, color: '#3b82f6' }}>
+                                    <LockIcon sx={{ fontSize: 16, color: 'var(--n-info)' }} />
+                                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--n-info)' }}>
                                       {t('progress.twoFactorRequired')}
                                     </Typography>
                                   </Box>
@@ -1502,7 +1503,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                                       sx={{
                                         minWidth: 32,
                                         p: 0,
-                                        background: '#3b82f6',
+                                        background: 'var(--n-info)',
                                         '&:hover': { background: '#2563eb' }
                                       }}
                                     >
@@ -1510,7 +1511,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                                     </Button>
                                   </Box>
                                   {otpError && (
-                                    <Typography variant="caption" sx={{ color: '#ef4444', mt: 0.5, display: 'block' }}>
+                                    <Typography variant="caption" sx={{ color: 'var(--n-error)', mt: 0.5, display: 'block' }}>
                                       {otpError}
                                     </Typography>
                                   )}
@@ -1543,7 +1544,7 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                           )}
 
                           {isFailed && item.error && (
-                            <Typography variant="caption" sx={{ color: '#ef4444', display: 'block', mt: 0.5, fontSize: '10px' }}>
+                            <Typography variant="caption" sx={{ color: 'var(--n-error)', display: 'block', mt: 0.5, fontSize: '10px' }}>
                               {item.error}
                             </Typography>
                           )}
@@ -1823,17 +1824,18 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
           </>
         )}
       </Box>
-
       {/* Screenshot Overlay Viewer */}
       <Dialog
         open={!!selectedScreenshot}
         onClose={() => setSelectedScreenshot(null)}
         maxWidth="xl"
         fullWidth
-        PaperProps={{
-          sx: {
-            background: 'transparent',
-            boxShadow: 'none'
+        slotProps={{
+          paper: {
+            sx: {
+              background: 'transparent',
+              boxShadow: 'none'
+            }
           }
         }}
       >
@@ -1866,29 +1868,30 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
           )}
         </DialogContent>
       </Dialog>
-
       {/* Error Details Modal */}
       <Dialog
         open={!!selectedErrorEvent}
         onClose={() => setSelectedErrorEvent(null)}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: {
-            background: theme.palette.mode === 'dark'
-              ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)'
-              : 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(20px)',
-            borderRadius: '12px',
-            border: '1px solid rgba(239, 68, 68, 0.3)'
+        slotProps={{
+          paper: {
+            sx: {
+              background: theme.palette.mode === 'dark'
+                ? 'linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%)'
+                : 'rgba(255, 255, 255, 0.98)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '12px',
+              border: '1px solid rgba(239, 68, 68, 0.3)'
+            }
           }
         }}
       >
         <Box sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <ErrorIcon sx={{ color: '#ef4444', fontSize: 28 }} />
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#ef4444' }}>
+              <ErrorIcon sx={{ color: 'var(--n-error)', fontSize: 28 }} />
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'var(--n-error)' }}>
                 {t('errorDetails.title')}
               </Typography>
             </Box>

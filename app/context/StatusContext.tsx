@@ -133,7 +133,7 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 setIsDbConnected(false);
                 setDbError(true);
             }
-        } catch (error) {
+        } catch (_error) {
             setIsDbConnected(false);
             setDbError(true);
         } finally {
@@ -163,7 +163,7 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 const data = await response.json();
                 // Filter out non-sync events from history if they exist
                 if (data.history) {
-                    data.history = data.history.filter((e: any) => e.vendor !== 'whatsapp_summary');
+                    data.history = data.history.filter((e: { vendor: string }) => e.vendor !== 'whatsapp_summary');
                 }
                 setSyncStatus(data);
             }
@@ -399,9 +399,11 @@ export const StatusProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, []);
 
     useEffect(() => {
-        // Initial checks
-        checkDb();
-        refreshStatus();
+        // Initial checks (deferred to avoid sync setState in effect)
+        queueMicrotask(() => {
+            checkDb();
+            refreshStatus();
+        });
 
         let dbIntervalId: NodeJS.Timeout;
         let syncIntervalId: NodeJS.Timeout;

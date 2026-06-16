@@ -25,7 +25,7 @@ const Indicator = styled('div')(({ theme }) => ({
   },
 }));
 
-const StatusDot = styled('div')<{ connected: boolean }>(({ connected, theme }) => ({
+const StatusDot = styled('div')<{ connected: boolean }>(({ connected }) => ({
   width: '8px',
   height: '8px',
   borderRadius: '50%',

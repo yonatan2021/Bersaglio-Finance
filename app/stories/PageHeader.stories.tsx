@@ -149,11 +149,15 @@ const FullFeaturedTemplate = () => {
                 <>
                     <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h6" sx={{ fontWeight: 700, color: '#ef4444' }}>-12,450</Typography>
-                        <Typography variant="caption" color="text.secondary">Expenses</Typography>
+                        <Typography variant="caption" sx={{
+                            color: "text.secondary"
+                        }}>Expenses</Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h6" sx={{ fontWeight: 700, color: '#10b981' }}>+15,000</Typography>
-                        <Typography variant="caption" color="text.secondary">Income</Typography>
+                        <Typography variant="caption" sx={{
+                            color: "text.secondary"
+                        }}>Income</Typography>
                     </Box>
                 </>
             }

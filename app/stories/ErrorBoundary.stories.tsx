@@ -38,7 +38,9 @@ export const NormalState: Story = {
         <ErrorBoundary>
             <Box sx={{ p: 4, textAlign: 'center' }}>
                 <Typography variant="h6">Content renders normally</Typography>
-                <Typography color="text.secondary">
+                <Typography sx={{
+                    color: "text.secondary"
+                }}>
                     The ErrorBoundary passes children through when there is no error.
                 </Typography>
             </Box>

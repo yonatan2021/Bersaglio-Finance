@@ -214,7 +214,7 @@ export default function ScrapeReport({ report, summary }: ScrapeReportProps) {
             </td>
             <td style={{ padding: '6px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <Typography variant="body2" sx={{
-                    color: tx.amount < 0 ? '#ef4444' : '#22c55e',
+                    color: tx.amount < 0 ? 'var(--n-error)' : '#22c55e',
                     fontSize: '0.8rem',
                     fontWeight: 600
                 }}>

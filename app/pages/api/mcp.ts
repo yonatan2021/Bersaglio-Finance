@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from "next";
+/* eslint-disable @typescript-eslint/no-explicit-any -- MCP transport interop with Node http req/res; SSEServerTransport exposes session state via a private field that needs an `as any` access */
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { createMcpServer } from "../../utils/mcp-setup";
 import logger from "../../utils/logger";

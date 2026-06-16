@@ -29,7 +29,7 @@ const BudgetRow: React.FC<BudgetRowProps> = ({
     onDelete,
     formatCurrency
 }) => {
-    const theme = useTheme();
+    const _theme = useTheme();
     const { t } = useTranslation('views');
 
     const getProgressColor = (percent: number) => {

@@ -45,14 +45,14 @@ interface ListResponse {
 }
 
 const TYPE_META: Record<AnomalyType, { icon: React.ReactNode; tone: string }> = {
-    price_hike: { icon: <TrendingUpIcon fontSize="small" />, tone: '#f59e0b' },
-    new_recurring: { icon: <AutorenewIcon fontSize="small" />, tone: '#6366f1' },
+    price_hike: { icon: <TrendingUpIcon fontSize="small" />, tone: 'var(--n-warning)' },
+    new_recurring: { icon: <AutorenewIcon fontSize="small" />, tone: 'var(--n-primary-500)' },
     category_spike: { icon: <LocalFireDepartmentIcon fontSize="small" />, tone: '#ec4899' },
 };
 
 const SEVERITY_TONE: Record<Severity, string> = {
-    high: '#ef4444',
-    medium: '#f59e0b',
+    high: 'var(--n-error)',
+    medium: 'var(--n-warning)',
     low: '#94a3b8',
 };
 
@@ -83,7 +83,7 @@ const InsightsView: React.FC = () => {
         }
     }, [t]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => { queueMicrotask(load); }, [load]);
 
     const visibleItems = useMemo(
         () => filter === 'all' ? items : items.filter((a) => a.type === filter),
@@ -135,16 +135,21 @@ const InsightsView: React.FC = () => {
         <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 980, mx: 'auto' }}>
             <Stack
                 direction="row"
-                alignItems="flex-end"
-                justifyContent="space-between"
                 spacing={2}
-                sx={{ mb: 3, flexWrap: 'wrap', gap: 1.5 }}
-            >
+                sx={{
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    mb: 3,
+                    flexWrap: 'wrap',
+                    gap: 1.5
+                }}>
                 <Box sx={{ minWidth: 0 }}>
                     <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2, mb: 0.5 }}>
                         {t('views:insights.title')}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                        color: "text.secondary"
+                    }}>
                         {t('views:insights.subtitle')}
                     </Typography>
                 </Box>
@@ -158,7 +163,6 @@ const InsightsView: React.FC = () => {
                     {evaluating ? t('views:insights.evaluating') : t('views:insights.evaluateNow')}
                 </Button>
             </Stack>
-
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1, mb: 3 }}>
                 <FilterChip
                     label={`${t('views:insights.filterAll')} · ${items.length}`}
@@ -180,17 +184,14 @@ const InsightsView: React.FC = () => {
                     );
                 })}
             </Stack>
-
             {loading && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                     <CircularProgress size={24} />
                 </Box>
             )}
-
             {!loading && error && (
                 <Alert severity="error" sx={{ my: 2 }}>{error}</Alert>
             )}
-
             {!loading && !error && visibleItems.length === 0 && (
                 <Box
                     sx={{
@@ -200,20 +201,20 @@ const InsightsView: React.FC = () => {
                         borderRadius: 'var(--n-radius-lg)',
                     }}
                 >
-                    <CheckIcon sx={{ fontSize: 48, color: '#10b981', mb: 1 }} />
+                    <CheckIcon sx={{ fontSize: 48, color: 'var(--n-success)', mb: 1 }} />
                     <Typography variant="h6" sx={{ mb: 0.5 }}>{t('views:insights.empty')}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{
+                        color: "text.secondary"
+                    }}>
                         {t('views:insights.emptyHint')}
                     </Typography>
                 </Box>
             )}
-
             <Stack spacing={1.5}>
                 {visibleItems.map((a) => (
                     <AnomalyCard key={a.id} anomaly={a} onTransition={transition} />
                 ))}
             </Stack>
-
             <Snackbar
                 open={!!toast}
                 autoHideDuration={3500}
@@ -381,7 +382,9 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, onTransition }) => {
                 },
             }}
         >
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+            <Stack direction="row" spacing={1.5} sx={{
+                alignItems: "flex-start"
+            }}>
                 <Box
                     sx={{
                         width: 36, height: 36, flexShrink: 0,
@@ -395,7 +398,13 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, onTransition }) => {
                 </Box>
 
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                    <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{
+                            alignItems: "center",
+                            mb: 0.5
+                        }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
                             {anomaly.title}
                         </Typography>
@@ -412,7 +421,13 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, onTransition }) => {
                     </Stack>
 
                     {anomaly.body && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1, lineHeight: 1.5 }}>
+                        <Typography
+                            variant="body2"
+                            sx={{
+                                color: "text.secondary",
+                                mb: 1,
+                                lineHeight: 1.5
+                            }}>
                             {anomaly.body}
                         </Typography>
                     )}
@@ -426,14 +441,19 @@ const AnomalyCard: React.FC<AnomalyCardProps> = ({ anomaly, onTransition }) => {
                         <Tooltip title={absoluteCreated}>
                             <Typography
                                 variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: 'help', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
-                            >
+                                sx={{
+                                    color: "text.secondary",
+                                    cursor: 'help',
+                                    textDecoration: 'underline dotted',
+                                    textUnderlineOffset: 2
+                                }}>
                                 {detectedLine}
                             </Typography>
                         </Tooltip>
                         {txLine && (
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="caption" sx={{
+                                color: "text.secondary"
+                            }}>
                                 {txLine}
                             </Typography>
                         )}

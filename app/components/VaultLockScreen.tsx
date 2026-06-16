@@ -107,13 +107,13 @@ const VaultLockScreen: React.FC = () => {
             setPassphrase('');
         }
         setLoading(false);
-    }, [unlockWithPasskey, setIsVaultModalOpen]);
+    }, [unlockWithPasskey, setIsVaultModalOpen, t]);
 
     // Auto-trigger passkey when modal opens and passkeys are available.
     useEffect(() => {
         if (isVaultModalOpen && isUnlock && hasPasskeys && supportsWebAuthn && authMode === 'passkey' && !loading && !hasAutoTriggered.current) {
             hasAutoTriggered.current = true;
-            handlePasskeyUnlock();
+            queueMicrotask(handlePasskeyUnlock);
         }
     }, [isVaultModalOpen, authMode, isUnlock, hasPasskeys, supportsWebAuthn, loading, handlePasskeyUnlock]);
 
@@ -265,7 +265,7 @@ const VaultLockScreen: React.FC = () => {
                         </>
                     ) : authMode === 'passkey' && isUnlock ? (
                         // Passkey-first unlock screen
-                        <>
+                        (<>
                             <Box sx={{
                                 p: 2,
                                 borderRadius: '50%',
@@ -277,21 +277,17 @@ const VaultLockScreen: React.FC = () => {
                             }}>
                                 <FingerprintIcon sx={{ fontSize: '48px', color: 'var(--n-primary-400)' }} />
                             </Box>
-
                             <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, textAlign: 'center' }}>
                                 {t('unlockPasskey.title')}
                             </Typography>
-
                             <Typography variant="body1" sx={{ color: 'var(--n-text-secondary)', mb: 4, textAlign: 'center' }}>
                                 {t('unlockPasskey.subtitle')}
                             </Typography>
-
                             {error && (
                                 <Alert severity="error" sx={{ width: '100%', mb: 3, borderRadius: 'var(--n-radius-lg)' }}>
                                     {error}
                                 </Alert>
                             )}
-
                             <Button
                                 fullWidth
                                 variant="contained"
@@ -317,7 +313,6 @@ const VaultLockScreen: React.FC = () => {
                             >
                                 {loading ? <CircularProgress size={24} color="inherit" /> : t('unlockPasskey.authenticate')}
                             </Button>
-
                             <Button
                                 fullWidth
                                 variant="text"
@@ -340,10 +335,10 @@ const VaultLockScreen: React.FC = () => {
                             >
                                 {t('unlockPasskey.usePassphraseInstead')}
                             </Button>
-                        </>
+                        </>)
                     ) : (
                         // Passphrase unlock / init / migrate screen
-                        <>
+                        (<>
                             <Box sx={{
                                 p: 2,
                                 borderRadius: '50%',
@@ -355,11 +350,9 @@ const VaultLockScreen: React.FC = () => {
                             }}>
                                 <LockOutlinedIcon sx={{ fontSize: '48px', color: 'var(--n-primary-400)' }} />
                             </Box>
-
                             <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, textAlign: 'center' }}>
                                 {isMigrate ? t('passphrase.titleMigrate') : isInit ? t('passphrase.titleInit') : t('passphrase.titleUnlock')}
                             </Typography>
-
                             <Typography variant="body1" sx={{ color: 'var(--n-text-secondary)', mb: 4, textAlign: 'center' }}>
                                 {isMigrate
                                     ? t('passphrase.descMigrate')
@@ -367,13 +360,11 @@ const VaultLockScreen: React.FC = () => {
                                         ? t('passphrase.descInit')
                                         : t('passphrase.descUnlock')}
                             </Typography>
-
                             {error && (
                                 <Alert severity="error" sx={{ width: '100%', mb: 3, borderRadius: 'var(--n-radius-lg)' }}>
                                     {error}
                                 </Alert>
                             )}
-
                             <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                                 <TextField
                                     fullWidth
@@ -384,33 +375,35 @@ const VaultLockScreen: React.FC = () => {
                                     disabled={loading}
                                     variant="outlined"
                                     autoFocus
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <KeyIcon sx={{ color: 'var(--n-primary-500)' }} />
-                                            </InputAdornment>
-                                        ),
-                                        endAdornment: (
-                                            <InputAdornment position="end">
-                                                <IconButton
-                                                    onClick={() => setShowPassphrase(!showPassphrase)}
-                                                    edge="end"
-                                                    sx={{ color: 'var(--n-text-secondary)' }}
-                                                >
-                                                    {showPassphrase ? <VisibilityOff /> : <Visibility />}
-                                                </IconButton>
-                                            </InputAdornment>
-                                        ),
-                                        sx: {
-                                            borderRadius: 'var(--n-radius-xl)',
-                                            backgroundColor: 'var(--n-bg-surface-alt)',
-                                            color: 'var(--n-text-primary)',
-                                            '& fieldset': { borderColor: 'var(--n-border)' },
-                                            '&:hover fieldset': { borderColor: 'var(--n-primary-400) !important' },
-                                            '&.Mui-focused fieldset': { borderColor: 'var(--n-primary-500) !important' },
+                                    sx={{ mb: (isInit || isMigrate) ? 2 : 3 }}
+                                    slotProps={{
+                                        input: {
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <KeyIcon sx={{ color: 'var(--n-primary-500)' }} />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton
+                                                        onClick={() => setShowPassphrase(!showPassphrase)}
+                                                        edge="end"
+                                                        sx={{ color: 'var(--n-text-secondary)' }}
+                                                    >
+                                                        {showPassphrase ? <VisibilityOff /> : <Visibility />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                            sx: {
+                                                borderRadius: 'var(--n-radius-xl)',
+                                                backgroundColor: 'var(--n-bg-surface-alt)',
+                                                color: 'var(--n-text-primary)',
+                                                '& fieldset': { borderColor: 'var(--n-border)' },
+                                                '&:hover fieldset': { borderColor: 'var(--n-primary-400) !important' },
+                                                '&.Mui-focused fieldset': { borderColor: 'var(--n-primary-500) !important' },
+                                            }
                                         }
                                     }}
-                                    sx={{ mb: (isInit || isMigrate) ? 2 : 3 }}
                                 />
 
                                 {(isInit || isMigrate) && (
@@ -422,22 +415,24 @@ const VaultLockScreen: React.FC = () => {
                                         onChange={(e) => setConfirmPassphrase(e.target.value)}
                                         disabled={loading}
                                         variant="outlined"
-                                        InputProps={{
-                                            startAdornment: (
-                                                <InputAdornment position="start">
-                                                    <KeyIcon sx={{ color: 'var(--n-primary-500)' }} />
-                                                </InputAdornment>
-                                            ),
-                                            sx: {
-                                                borderRadius: 'var(--n-radius-xl)',
-                                                backgroundColor: 'var(--n-bg-surface-alt)',
-                                                color: 'var(--n-text-primary)',
-                                                '& fieldset': { borderColor: 'var(--n-border)' },
-                                                '&:hover fieldset': { borderColor: 'var(--n-primary-400) !important' },
-                                                '&.Mui-focused fieldset': { borderColor: 'var(--n-primary-500) !important' },
+                                        sx={{ mb: 3 }}
+                                        slotProps={{
+                                            input: {
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        <KeyIcon sx={{ color: 'var(--n-primary-500)' }} />
+                                                    </InputAdornment>
+                                                ),
+                                                sx: {
+                                                    borderRadius: 'var(--n-radius-xl)',
+                                                    backgroundColor: 'var(--n-bg-surface-alt)',
+                                                    color: 'var(--n-text-primary)',
+                                                    '& fieldset': { borderColor: 'var(--n-border)' },
+                                                    '&:hover fieldset': { borderColor: 'var(--n-primary-400) !important' },
+                                                    '&.Mui-focused fieldset': { borderColor: 'var(--n-primary-500) !important' },
+                                                }
                                             }
                                         }}
-                                        sx={{ mb: 3 }}
                                     />
                                 )}
 
@@ -490,7 +485,6 @@ const VaultLockScreen: React.FC = () => {
                                     </Button>
                                 )}
                             </form>
-
                             <Button
                                 variant="text"
                                 size="small"
@@ -506,7 +500,6 @@ const VaultLockScreen: React.FC = () => {
                             >
                                 {t('passphrase.howEncryptionWorks')}
                             </Button>
-
                             <Collapse in={showSecurityDetails} sx={{ width: '100%' }}>
                                 <Box sx={{
                                     mt: 1,
@@ -527,11 +520,10 @@ Master Key ─AES-256-GCM─▶ Credentials (DB)`
                                     </Typography>
                                 </Box>
                             </Collapse>
-
                             <Typography variant="body2" sx={{ color: 'var(--n-text-muted)', mt: 2, textAlign: 'center', fontSize: '0.75rem' }}>
                                 {t('passphrase.footer')}
                             </Typography>
-                        </>
+                        </>)
                     )}
                 </DialogContent>
             </Box>

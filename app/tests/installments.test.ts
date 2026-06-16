@@ -45,7 +45,7 @@ describe('Installments Support', () => {
 
         await insertTransaction(mockClient, transaction, 'max', '1234', 'ILS');
 
-        const insertCall = mockClient.query.mock.calls.find(call =>
+        const insertCall = mockClient.query.mock.calls.find((call: any[]) =>
             call[0].includes('INSERT INTO transactions')
         );
 
@@ -73,7 +73,7 @@ describe('Installments Support', () => {
 
         await insertTransaction(mockClient, transaction, 'max', '1234', 'ILS');
 
-        const insertCall = mockClient.query.mock.calls.find(call =>
+        const insertCall = mockClient.query.mock.calls.find((call: any[]) =>
             call[0].includes('INSERT INTO transactions')
         );
 

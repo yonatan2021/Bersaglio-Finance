@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { logger } from '../utils/client-logger';
-import { Box, Typography, Button, IconButton, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, Autocomplete, createFilterOptions, useTheme, LinearProgress, Tooltip, Collapse } from '@mui/material';
+import { Box, Typography, Button, IconButton, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, Autocomplete, createFilterOptions, useTheme, Tooltip, Collapse } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 import SavingsIcon from '@mui/icons-material/Savings';
 import AddIcon from '@mui/icons-material/Add';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -36,7 +37,7 @@ const MinimalBudgetRow: React.FC<{
     budget: BudgetWithSpending;
     onEdit: () => void;
     onViewTransactions: () => void;
-    theme: any;
+    theme: Theme;
     formatCurrency: (n: number) => string;
     t: (key: string, options?: Record<string, unknown>) => string;
 }> = ({ budget, onEdit, onViewTransactions, theme, formatCurrency, t }) => {
@@ -245,7 +246,7 @@ const BudgetModule: React.FC<BudgetModuleProps> = ({ onViewTransactions }) => {
 
             // Create maps for easy lookup
             const spendingMap = new Map<string, number>();
-            data.categories.forEach((c: any) => {
+            data.categories.forEach((c: { category: string; actual_spent: number }) => {
                 spendingMap.set(c.category, c.actual_spent);
             });
 
@@ -463,7 +464,6 @@ const BudgetModule: React.FC<BudgetModuleProps> = ({ onViewTransactions }) => {
                     </Box>
                 </Box>
             </Box>
-
             <Collapse in={isExpanded}>
                 {/* Scrollable Container with explicit max-height */}
                 <Box
@@ -539,16 +539,17 @@ const BudgetModule: React.FC<BudgetModuleProps> = ({ onViewTransactions }) => {
                     </Box>
                 </Box>
             </Collapse>
-
             {/* Add/Edit Budget Modal */}
             <Dialog
                 open={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                PaperProps={{
-                    style: {
-                        borderRadius: '24px',
-                        padding: '8px',
-                        minWidth: '400px'
+                slotProps={{
+                    paper: {
+                        style: {
+                            borderRadius: '24px',
+                            padding: '8px',
+                            minWidth: '400px'
+                        }
                     }
                 }}
             >
@@ -618,10 +619,12 @@ const BudgetModule: React.FC<BudgetModuleProps> = ({ onViewTransactions }) => {
                             type="number"
                             value={newBudgetLimit}
                             onChange={(e) => setNewBudgetLimit(e.target.value)}
-                            InputProps={{
-                                startAdornment: <span style={{ marginRight: '4px' }}>₪</span>
-                            }}
                             variant="outlined"
+                            slotProps={{
+                                input: {
+                                    startAdornment: <span style={{ marginRight: '4px' }}>₪</span>
+                                }
+                            }}
                         />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>

@@ -2,15 +2,15 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Box } from '@mui/material';
 import React from 'react';
 import TransactionsTable, { Transaction } from '../components/CategoryDashboard/components/TransactionsTable';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { createTheme } from '@mui/material/styles';
 
-const darkTheme = createTheme({
+const _darkTheme = createTheme({
     palette: {
         mode: 'dark',
     },
 });
 
-const lightTheme = createTheme({
+const _lightTheme = createTheme({
     palette: {
         mode: 'light',
     },

@@ -12,10 +12,9 @@ const DesignSystemShowcase: React.FC = () => {
                 leveraging glassmorphism and subtle micro-interactions to create a
                 world-class financial experience.
             </Typography>
-
             <Grid container spacing={4}>
                 {/* Colors */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <Typography variant="h4" sx={{ mb: 3 }}>Palette</Typography>
                     <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
                         {[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map(level => (
@@ -46,18 +45,26 @@ const DesignSystemShowcase: React.FC = () => {
                 </Grid>
 
                 {/* Cards */}
-                <Grid item xs={12} md={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        md: 6
+                    }}>
                     <Typography variant="h4" sx={{ mb: 3 }}>Cards & Surfaces</Typography>
                     <Stack spacing={3}>
                         <Paper className="n-card n-card-hover">
                             <Typography variant="h6">Standard Card</Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{
+                                color: "text.secondary"
+                            }}>
                                 This card uses the design system's elevation and hover effects.
                             </Typography>
                         </Paper>
                         <Box className="n-glass" sx={{ p: 3, borderRadius: 'var(--n-radius-xl)' }}>
                             <Typography variant="h6">Glass Surface</Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{
+                                color: "text.secondary"
+                            }}>
                                 Perfect for headers, overlays, and sidebars.
                             </Typography>
                         </Box>
@@ -65,9 +72,15 @@ const DesignSystemShowcase: React.FC = () => {
                 </Grid>
 
                 {/* Buttons */}
-                <Grid item xs={12} md={6}>
+                <Grid
+                    size={{
+                        xs: 12,
+                        md: 6
+                    }}>
                     <Typography variant="h4" sx={{ mb: 3 }}>Components</Typography>
-                    <Stack spacing={2} direction="row" useFlexGap flexWrap="wrap">
+                    <Stack spacing={2} direction="row" useFlexGap sx={{
+                        flexWrap: "wrap"
+                    }}>
                         <Button variant="contained" color="primary">MUI Primary</Button>
                         <Button variant="outlined">MUI Outline</Button>
                         <button className="n-btn n-btn-primary">Vanilla Primary</button>
@@ -82,7 +95,7 @@ const DesignSystemShowcase: React.FC = () => {
                 </Grid>
 
                 {/* Typography */}
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <Typography variant="h4" sx={{ mb: 3 }}>Typography</Typography>
                     <Box sx={{ p: 4, bgcolor: 'var(--n-bg-surface-alt)', borderRadius: 'var(--n-radius-xl)' }}>
                         <Typography variant="h1">Heading 1 - Outfit Bold</Typography>

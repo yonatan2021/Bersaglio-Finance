@@ -5,8 +5,6 @@ import Paper from "@mui/material/Paper";
 import { styled } from "@mui/material/styles";
 import { useEffect } from "react";
 import { BoxPanelData } from '../types';
-import { dateUtils } from '../utils/dateUtils';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import CategoryIcon from '@mui/icons-material/Category';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -17,7 +15,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import Tooltip from '@mui/material/Tooltip';
 import { useTranslation } from 'react-i18next';
 
-const MetricCard = styled(Paper)(({ theme }) => ({
+const MetricCard = styled(Paper)(() => ({
   background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
   backdropFilter: 'blur(20px)',
   borderRadius: '20px',

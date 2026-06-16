@@ -1,4 +1,4 @@
-import { createApiHandler } from "../utils/apiHandler";
+import { createApiHandler } from "../../../utils/apiHandler";
 import { BANK_VENDORS } from "../../../utils/constants.js";
 
 const handler = createApiHandler({

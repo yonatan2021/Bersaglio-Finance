@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { claimCardOwnership, processScrapedAccounts } from '../pages/api/utils/scraperUtils';
 import { getDB } from '../pages/api/db';
 
@@ -86,7 +86,7 @@ describe('Account Balance Storage', () => {
             });
 
             // claimCardOwnership is the second query in the main loop
-            const claimCall = mockClient.query.mock.calls.find(call =>
+            const claimCall = mockClient.query.mock.calls.find((call: any[]) =>
                 call[0].includes('INSERT INTO card_ownership') && call[1].includes(7500.25)
             );
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- MCP tool handlers consume dynamic JSON responses from internal APIs whose shapes vary by endpoint; row-level typing would duplicate ad-hoc shapes from many endpoints */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 

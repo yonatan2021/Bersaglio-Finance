@@ -11,7 +11,7 @@ import CloudOffIcon from '@mui/icons-material/CloudOff';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
 
-interface SyncStatus {
+interface _SyncStatus {
   syncHealth: string;
   settings: {
     enabled: boolean;

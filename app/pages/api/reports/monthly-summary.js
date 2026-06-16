@@ -1,4 +1,4 @@
-import { createApiHandler } from "../utils/apiHandler";
+import { createApiHandler } from "../../../utils/apiHandler";
 import { getBillingCycleSql } from "../../../utils/transaction_logic";
 import { getBillingCycleStartDay } from "../utils/scraperUtils";
 import { BANK_VENDORS } from "../../../utils/constants";

@@ -58,7 +58,7 @@ export default function ModalHeader({ title, onClose, actions, startAction }: Mo
             minHeight: { xs: 40, md: 'auto' },
             '&:hover': {
               background: 'rgba(239, 68, 68, 0.15)',
-              color: '#ef4444',
+              color: 'var(--n-error)',
               transform: 'scale(1.1)',
             }
           }}

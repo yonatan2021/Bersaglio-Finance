@@ -66,7 +66,7 @@ export function useTransactions() {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const transactionsData = await response.json();
-      const mappedTransactions = transactionsData.map((t: any) => ({
+      const mappedTransactions = transactionsData.map((t: { category?: string;[key: string]: unknown }) => ({
         ...t,
         category: t.category || 'Unassigned',
         identifier: t.identifier || 'unknown',
@@ -92,6 +92,7 @@ export function useTransactions() {
         setLoadingMore(false);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- transactions.length is intentionally excluded; including it would cause a refetch loop after every page append
   }, [selectedYear, selectedMonth, sortBy, sortOrder, favoritesOnly]);
 
   const handleSearch = React.useCallback(async (e?: React.FormEvent, isLoadMore: boolean = false) => {
@@ -154,6 +155,7 @@ export function useTransactions() {
       }
       setIsSearching(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- transactions.length is intentionally excluded; including it would cause a refetch loop after every page append
   }, [
     searchQuery, startDate, endDate, billingCycle,
     fetchTransactionsWithRange, dateRangeMode,
@@ -169,7 +171,7 @@ export function useTransactions() {
     pageRef.current = 0;
   };
 
-  const handleLoadMore = () => {
+  const handleLoadMore = React.useCallback(() => {
     if (!loadingTransactions && !loadingMore && hasMore) {
       if (searchQuery.trim()) {
         handleSearch(undefined, true);
@@ -177,7 +179,7 @@ export function useTransactions() {
         fetchTransactionsWithRange(startDate, endDate, billingCycle, true);
       }
     }
-  };
+  }, [loadingTransactions, loadingMore, hasMore, searchQuery, startDate, endDate, billingCycle, handleSearch, fetchTransactionsWithRange]);
 
   const handleRefreshClick = () => {
     if (searchQuery.trim()) {
@@ -203,13 +205,14 @@ export function useTransactions() {
 
   // Initial data fetch
   React.useEffect(() => {
-    if (startDate && endDate) {
+    if (!startDate || !endDate) return;
+    queueMicrotask(() => {
       if (searchQuery.trim()) {
         handleSearch();
       } else {
         fetchTransactionsWithRange(startDate, endDate, billingCycle);
       }
-    }
+    });
   }, [startDate, endDate, billingCycle, fetchTransactionsWithRange, searchQuery, favoritesOnly, handleSearch]);
 
   // Stable event listener - attached once, never re-attached

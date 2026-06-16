@@ -3,37 +3,19 @@ import { useTheme } from '@mui/material/styles';
 import Button from '@mui/material/Button';
 import LinearProgress from '@mui/material/LinearProgress';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import DescriptionIcon from '@mui/icons-material/Description';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import DateRangeIcon from '@mui/icons-material/DateRange';
 import TuneIcon from '@mui/icons-material/Tune';
-import SortIcon from '@mui/icons-material/Sort';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import SettingsIcon from '@mui/icons-material/Settings';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import SearchIcon from '@mui/icons-material/Search';
 import SummarizeIcon from '@mui/icons-material/Summarize';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import EditIcon from '@mui/icons-material/Edit';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { useAI } from '../context/AIContext';
 
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
-import Autocomplete from '@mui/material/Autocomplete';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Tooltip from '@mui/material/Tooltip';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Link from 'next/link';
 import PageHeader from './PageHeader';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -46,13 +28,14 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import ExpensesModal from './CategoryDashboard/components/ExpensesModal';
 import Typography from '@mui/material/Typography';
 import { ModalData } from './CategoryDashboard/types';
-import { useCategories } from './CategoryDashboard/utils/useCategories';
 import { CardVendorIcon, CARD_VENDORS } from './CardVendorsModal';
 import { useScreenContext } from './Layout';
+import { useSnackbar } from './hooks/useSnackbar';
+import SnackbarFeedback from './SnackbarFeedback';
 import { useDateSelection, DateRangeMode } from '../context/DateSelectionContext';
 import { logger } from '../utils/client-logger';
 import { isBankTransaction, BankCheckTransaction } from '../utils/transactionUtils';
-import { CREDIT_CARD_VENDORS, BANK_VENDORS } from '../utils/constants';
+import { BANK_VENDORS } from '../utils/constants';
 import { useTranslation } from 'react-i18next';
 import { useLocale } from '../context/LocaleContext';
 
@@ -121,7 +104,7 @@ interface Account {
   };
 }
 
-type GroupByType = 'vendor' | 'description' | 'last4digits';
+type _GroupByType = 'vendor' | 'description' | 'last4digits';
 // DateRangeMode imported from context
 
 
@@ -216,11 +199,10 @@ const MonthlySummary: React.FC = () => {
 
     const cardOwnershipId = cardOwnershipMap[cardLast4];
     if (!cardOwnershipId) {
-      setSnackbar({ open: true, message: t('summary.snackbarMoveCardNoSystemId'), severity: 'error' });
+      showSnackbar(t('summary.snackbarMoveCardNoSystemId'), 'error');
       return;
     }
 
-    // Optimistic update could go here, but for now let's rely on refresh
     try {
       const response = await fetch(`/api/cards/ownerships/${cardOwnershipId}`, {
         method: 'PATCH',
@@ -229,15 +211,14 @@ const MonthlySummary: React.FC = () => {
       });
 
       if (response.ok) {
-        setSnackbar({ open: true, message: t('summary.snackbarCardMoved'), severity: 'success' });
+        showSnackbar(t('summary.snackbarCardMoved'), 'success');
         fetchMonthlySummary(true);
-        // Also refresh vendors to update ownership map if needed, though ID shouldn't change
       } else {
-        setSnackbar({ open: true, message: t('summary.snackbarFailedToMove'), severity: 'error' });
+        showSnackbar(t('summary.snackbarFailedToMove'), 'error');
       }
     } catch (e) {
       logger.error('Move failed', e);
-      setSnackbar({ open: true, message: t('summary.snackbarMoveFailed'), severity: 'error' });
+      showSnackbar(t('summary.snackbarMoveFailed'), 'error');
     }
   };
 
@@ -258,12 +239,12 @@ const MonthlySummary: React.FC = () => {
 
   // Date range error (local validation for custom range UI feedback if needed, 
   // though context handles valid start/end dates for fetching)
-  const [dateRangeError, setDateRangeError] = useState<string>('');
+  const [_dateRangeError, setDateRangeError] = useState<string>('');
 
   // Modal for transaction details
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalData, setModalData] = useState<ModalData | undefined>();
-  const [loadingLast4, setLoadingLast4] = useState<string | null>(null);
+  const [_loadingLast4, setLoadingLast4] = useState<string | null>(null);
 
   // Card summary for cards display (grouped by last 4 digits)
   const [cardSummary, setCardSummary] = useState<CardSummary[]>([]);
@@ -281,11 +262,7 @@ const MonthlySummary: React.FC = () => {
   // Category editing
 
 
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
+  const { snackbar, showSnackbar, hideSnackbar } = useSnackbar();
 
   // Card vendor selection
   const [vendorMenuAnchor, setVendorMenuAnchor] = useState<null | HTMLElement>(null);
@@ -332,7 +309,7 @@ const MonthlySummary: React.FC = () => {
   const handleSaveBudget = async () => {
     const limit = parseFloat(newBudgetLimit);
     if (isNaN(limit) || limit <= 0) {
-      setSnackbar({ open: true, message: t('summary.snackbarInvalidBudget'), severity: 'error' });
+      showSnackbar(t('summary.snackbarInvalidBudget'), 'error');
       return;
     }
 
@@ -346,12 +323,12 @@ const MonthlySummary: React.FC = () => {
       if (res.ok) {
         setBudgetLimit(limit);
         setIsEditingBudget(false);
-        setSnackbar({ open: true, message: t('summary.snackbarBudgetUpdated'), severity: 'success' });
+        showSnackbar(t('summary.snackbarBudgetUpdated'), 'success');
       } else {
         throw new Error('Failed to save');
       }
-    } catch (e) {
-      setSnackbar({ open: true, message: t('summary.snackbarFailedUpdateBudget'), severity: 'error' });
+    } catch (_e) {
+      showSnackbar(t('summary.snackbarFailedUpdateBudget'), 'error');
     }
   };
 
@@ -448,15 +425,13 @@ const MonthlySummary: React.FC = () => {
           ...prev,
           [selectedCardForVendor]: vendorKey
         }));
-        setSnackbar({
-          open: true,
-          message: t('summary.snackbarCardVendorSet', {
+        showSnackbar(
+          t('summary.snackbarCardVendorSet', {
             last4: selectedCardForVendor,
             vendor: CARD_VENDORS[vendorKey as keyof typeof CARD_VENDORS]?.name || vendorKey
           }),
-          severity: 'success'
-        });
-        // Trigger refresh for other components
+          'success'
+        );
         window.dispatchEvent(new CustomEvent('cardVendorsUpdated'));
       }
     } catch (error) {
@@ -464,11 +439,7 @@ const MonthlySummary: React.FC = () => {
         card: selectedCardForVendor,
         vendor: vendorKey
       });
-      setSnackbar({
-        open: true,
-        message: t('summary.snackbarFailedSaveVendor'),
-        severity: 'error'
-      });
+      showSnackbar(t('summary.snackbarFailedSaveVendor'), 'error');
     }
 
     handleVendorMenuClose();
@@ -493,13 +464,12 @@ const MonthlySummary: React.FC = () => {
           ...prev,
           [last4digits]: nickname
         }));
-        setSnackbar({
-          open: true,
-          message: nickname
+        showSnackbar(
+          nickname
             ? t('summary.snackbarNicknameSet', { nickname })
             : t('summary.snackbarNicknameRemoved'),
-          severity: 'success'
-        });
+          'success'
+        );
         window.dispatchEvent(new CustomEvent('cardVendorsUpdated'));
       }
     } catch (error) {
@@ -507,17 +477,13 @@ const MonthlySummary: React.FC = () => {
         card: last4digits,
         nickname
       });
-      setSnackbar({
-        open: true,
-        message: t('summary.snackbarFailedSaveNickname'),
-        severity: 'error'
-      });
+      showSnackbar(t('summary.snackbarFailedSaveNickname'), 'error');
     }
   };
 
   // fetchAvailableMonths removed
 
-  const fetchMonthlySummary = useCallback(async (skipLoadingState = false, offsetValue = 0) => {
+  const fetchMonthlySummary = useCallback(async (skipLoadingState = false, _offsetValue = 0) => {
     // For custom mode, we need custom dates; for other modes, we need year/month
     if (dateRangeMode === 'custom') {
       if (!customStartDate || !customEndDate) return;
@@ -769,6 +735,7 @@ const MonthlySummary: React.FC = () => {
     } else if (startDate && endDate) {
       fetchMonthlySummary(false, 0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchMonthlySummary is stable; including it would cause re-runs
   }, [startDate, endDate, billingCycle, dateRangeMode, customStartDate, customEndDate, selectedYear, selectedMonth]);
 
   // Separate useEffect for filter toggle - skip loading state to prevent flicker
@@ -826,7 +793,7 @@ const MonthlySummary: React.FC = () => {
 
 
 
-  const [loadingAll, setLoadingAll] = useState(false);
+  const [_loadingAll, setLoadingAll] = useState(false);
 
   const handleAllTransactionsClick = async () => {
     if (dateRangeMode === 'custom') {
@@ -880,7 +847,7 @@ const MonthlySummary: React.FC = () => {
 
 
 
-  const handleBankAccountClick = async (bank: ScrapedBankSummary) => {
+  const _handleBankAccountClick = async (bank: ScrapedBankSummary) => {
     if (dateRangeMode === 'custom') {
       if (!customStartDate || !customEndDate) return;
     } else {
@@ -1112,7 +1079,7 @@ const MonthlySummary: React.FC = () => {
       <div style={{
         textAlign: 'center',
         padding: '64px',
-        color: '#ef4444'
+        color: 'var(--n-error)'
       }}>
         {t('summary.errorPrefix', { message: error })}
       </div>
@@ -1127,8 +1094,6 @@ const MonthlySummary: React.FC = () => {
       overflow: 'hidden'
     }}>
       {/* Background elements removed - handled by Layout.tsx */}
-
-
       {/* Main content container */}
       <Box sx={{
         padding: { xs: '12px 8px', sm: '16px 12px', md: '24px 16px' },
@@ -1177,7 +1142,7 @@ const MonthlySummary: React.FC = () => {
             alignItems: 'center',
             minHeight: '300px'
           }}>
-            <CircularProgress size={60} style={{ color: '#3b82f6' }} />
+            <CircularProgress size={60} style={{ color: 'var(--n-info)' }} />
           </div>
         ) : (
           <>
@@ -1253,7 +1218,7 @@ const MonthlySummary: React.FC = () => {
                                 '& .MuiInputBase-root': { bgcolor: theme.palette.background.paper, fontSize: '0.8125rem' }
                               }}
                             />
-                            <IconButton size="small" onClick={handleSaveBudget} sx={{ color: '#10b981', p: 0.5 }}>
+                            <IconButton size="small" onClick={handleSaveBudget} sx={{ color: 'var(--n-success)', p: 0.5 }}>
                               <CheckIcon fontSize="small" />
                             </IconButton>
                           </Box>
@@ -1269,11 +1234,11 @@ const MonthlySummary: React.FC = () => {
                                   flex: 1,
                                   bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                                   '& .MuiLinearProgress-bar': {
-                                    bgcolor: totals.card_expenses > budgetLimit ? '#ef4444' : '#10b981'
+                                    bgcolor: totals.card_expenses > budgetLimit ? 'var(--n-error)' : 'var(--n-success)'
                                   }
                                 }}
                               />
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: totals.card_expenses > budgetLimit ? '#ef4444' : '#10b981', fontSize: '0.65rem' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: totals.card_expenses > budgetLimit ? 'var(--n-error)' : 'var(--n-success)', fontSize: '0.65rem' }}>
                                 {Math.round((totals.card_expenses / budgetLimit) * 100)}%
                               </Typography>
                             </Box>
@@ -1363,7 +1328,7 @@ const MonthlySummary: React.FC = () => {
                     alignItems: 'start'
                   }}>
                     {creditCardBankSummary.map((bank) => {
-                      const percentage = totals.card_expenses > 0
+                      const _percentage = totals.card_expenses > 0
                         ? Math.round((bank.total_cc_expenses / totals.card_expenses) * 100)
                         : 0;
 
@@ -1653,15 +1618,17 @@ const MonthlySummary: React.FC = () => {
               anchorEl={vendorMenuAnchor}
               open={Boolean(vendorMenuAnchor)}
               onClose={handleVendorMenuClose}
-              PaperProps={{
-                sx: {
-                  borderRadius: '16px',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                  minWidth: '240px',
-                  maxHeight: '500px',
-                  background: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.95)' : undefined,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${theme.palette.divider}`
+              slotProps={{
+                paper: {
+                  sx: {
+                    borderRadius: '16px',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+                    minWidth: '240px',
+                    maxHeight: '500px',
+                    background: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.95)' : undefined,
+                    backdropFilter: 'blur(10px)',
+                    border: `1px solid ${theme.palette.divider}`
+                  }
                 }
               }}
             >
@@ -1683,27 +1650,29 @@ const MonthlySummary: React.FC = () => {
                     e.stopPropagation();
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  InputProps={{
-                    endAdornment: editingNickname !== (cardNicknameMap[selectedCardForVendor || ''] || '') && (
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (selectedCardForVendor) {
-                            handleNicknameSave(selectedCardForVendor, editingNickname);
-                          }
-                        }}
-                        sx={{ color: '#10b981' }}
-                      >
-                        <CheckIcon sx={{ fontSize: '18px' }} />
-                      </IconButton>
-                    )
-                  }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '10px',
                       backgroundColor: theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.5)' : '#f8fafc',
                       color: 'text.primary'
+                    }
+                  }}
+                  slotProps={{
+                    input: {
+                      endAdornment: editingNickname !== (cardNicknameMap[selectedCardForVendor || ''] || '') && (
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (selectedCardForVendor) {
+                              handleNicknameSave(selectedCardForVendor, editingNickname);
+                            }
+                          }}
+                          sx={{ color: 'var(--n-success)' }}
+                        >
+                          <CheckIcon sx={{ fontSize: '18px' }} />
+                        </IconButton>
+                      )
                     }
                   }}
                 />
@@ -1731,7 +1700,7 @@ const MonthlySummary: React.FC = () => {
                   <CardVendorIcon vendor={key} size={32} />
                   <span style={{ fontWeight: 500, color: theme.palette.text.primary }}>{config.name}</span>
                   {cardVendorMap[selectedCardForVendor || ''] === key && (
-                    <CheckIcon sx={{ fontSize: '18px', color: '#10b981', ml: 'auto' }} />
+                    <CheckIcon sx={{ fontSize: '18px', color: 'var(--n-success)', ml: 'auto' }} />
                   )}
                 </MenuItem>
               ))}
@@ -1746,7 +1715,11 @@ const MonthlySummary: React.FC = () => {
             }}>
               <Grid container spacing={3}>
                 {/* Left Side: Budget Module */}
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <BudgetModule onViewTransactions={async (category) => {
                     try {
                       let queryParams = `category=${encodeURIComponent(category)}`;
@@ -1774,7 +1747,11 @@ const MonthlySummary: React.FC = () => {
                 </Grid>
 
                 {/* Right Side: Recent Transactions Module */}
-                <Grid item xs={12} md={6}>
+                <Grid
+                  size={{
+                    xs: 12,
+                    md: 6
+                  }}>
                   <RecentTransactionsModule />
                 </Grid>
               </Grid>
@@ -1795,24 +1772,17 @@ const MonthlySummary: React.FC = () => {
           />
         )}
 
-        <Snackbar
-          open={snackbar.open}
+        <SnackbarFeedback
+          snackbar={snackbar}
+          onClose={hideSnackbar}
           autoHideDuration={5000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
           anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        >
-          <Alert
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            severity={snackbar.severity}
-            sx={{
-              width: "100%",
-              borderRadius: "12px",
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)"
-            }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+          alertSx={{
+            width: "100%",
+            borderRadius: "12px",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)"
+          }}
+        />
       </Box>
     </div >
   );

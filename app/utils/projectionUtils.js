@@ -124,12 +124,13 @@ function getExampleDates(dayOfMonth, start, days) {
 
 /**
  * Generates the financial projection.
- * 
+ *
  * @param {Array} accounts - Accounts with current balances
  * @param {Array} bankRecurring - Detected bank recurring payments (next_payment_date required)
  * @param {Array} manualRecurring - Manual recurring payments (day_of_month required)
  * @param {Array} ccPayments - Future credit card payments (normalizedDate required)
  * @param {number} days - Number of days to project (default 30)
+ * @param {Date | null} [startDate]
  * @returns {Array} Array of projection objects
  */
 export function generateProjection(accounts, bankRecurring, manualRecurring, ccPayments, days = 30, startDate = null) {

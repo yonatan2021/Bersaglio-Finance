@@ -62,15 +62,22 @@ export default async function handler(req, res) {
         FROM transactions
         WHERE (${effectiveMonthSql}) = $1
           AND COALESCE(category, '') != 'Bank'
-          AND vendor NOT IN (${bankPlaceholders})
+          AND NOT (
+            transaction_type = 'bank' AND (
+              name ILIKE '%מסטרקרד%' OR
+              name ILIKE '%ישראכרט%' OR
+              name ILIKE '%ויזה%' OR
+              name ILIKE '%כאל%' OR
+              name ILIKE '%אמריקן אקספרס%' OR
+              name ILIKE '%מקס%' OR
+              name ILIKE '%כרטיסי אשראי%'
+            )
+          )
         GROUP BY COALESCE(NULLIF(category, ''), 'Uncategorized')
       `;
-      actualParams = [cycleValue, ...BANK_VENDORS];
+      actualParams = [cycleValue];
     } else {
       // Use date range (date filter)
-      // For date range, parameters start at $3 because $1 and $2 are dates
-      const dateBankPlaceholders = BANK_VENDORS.map((_, idx) => `$${idx + 3}`).join(', ');
-
       actualSpendingSql = `
         SELECT
           COALESCE(NULLIF(category, ''), 'Uncategorized') as category,
@@ -78,10 +85,20 @@ export default async function handler(req, res) {
         FROM transactions
         WHERE date >= $1 AND date <= $2
           AND COALESCE(category, '') != 'Bank'
-          AND vendor NOT IN (${dateBankPlaceholders})
+          AND NOT (
+            transaction_type = 'bank' AND (
+              name ILIKE '%מסטרקרד%' OR
+              name ILIKE '%ישראכרט%' OR
+              name ILIKE '%ויזה%' OR
+              name ILIKE '%כאל%' OR
+              name ILIKE '%אמריקן אקספרס%' OR
+              name ILIKE '%מקס%' OR
+              name ILIKE '%כרטיסי אשראי%'
+            )
+          )
         GROUP BY COALESCE(NULLIF(category, ''), 'Uncategorized')
       `;
-      actualParams = [startDate, endDate, ...BANK_VENDORS];
+      actualParams = [startDate, endDate];
     }
 
     // Get all general budgets (not cycle-specific anymore)

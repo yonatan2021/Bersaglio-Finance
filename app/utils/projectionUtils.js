@@ -192,20 +192,38 @@ export function generateProjection(accounts, bankRecurring, manualRecurring, ccP
     if (ccPayments && Array.isArray(ccPayments)) {
         ccPayments.forEach(cc => {
             if (!cc.normalizedDate) return;
-            const d = cc.normalizedDate; // Should already be midnight via normalizeTransactionDates
+            const billingDate = cc.normalizedDate; // Already midnight
 
             const targetBankId = cc.linked_bank_account_id;
             const targetAccount = accounts.find(a => a.credential_id === targetBankId);
 
+            // Find the credit card account itself in the list of accounts
+            const cardAccount = accounts.find(a => !a.is_bank && a.vendor === cc.vendor && a.account_number.slice(-4) === cc.last4);
+
             if (targetAccount) {
-                addEvent(d, {
-                    type: 'cc',
+                // 1. Billing event on billingDate (affects bank account and card account)
+                addEvent(billingDate, {
+                    type: 'cc_billing',
                     name: cc.card_name,
                     last4: cc.last4,
                     vendor: cc.vendor,
                     price: parseFloat(cc.price),
-                    account_number: targetAccount.account_number
+                    bank_account_number: targetAccount.account_number,
+                    card_account_number: cardAccount ? cardAccount.account_number : null
                 });
+
+                // 2. Purchase event on purchaseDate (affects card account only, if in the future)
+                const purchaseDate = getLocalMidnight(cc.date);
+                if (purchaseDate > today) {
+                    addEvent(purchaseDate, {
+                        type: 'cc_purchase',
+                        name: cc.card_name,
+                        last4: cc.last4,
+                        vendor: cc.vendor,
+                        price: parseFloat(cc.price),
+                        card_account_number: cardAccount ? cardAccount.account_number : null
+                    });
+                }
             }
         });
     }
@@ -227,9 +245,6 @@ export function generateProjection(accounts, bankRecurring, manualRecurring, ccP
         const ccGroupMap = new Map(); // Group by card
 
         // We only apply transactions for future days (i > 0)
-        // i=0 is today, usually we show partial or full balance. 
-        // Adhering to previous logic: transactions are applied if i > 0.
-
         if (i > 0) {
             const events = eventMap.get(dateTs) || [];
 
@@ -245,23 +260,36 @@ export function generateProjection(accounts, bankRecurring, manualRecurring, ccP
                         });
                         currentAccountBalances[event.account_number] += event.amount;
                     }
-                } else if (event.type === 'cc') {
-                    const key = `${event.account_number}-${event.vendor}-${event.last4}`;
+                } else if (event.type === 'cc_billing') {
+                    // 1. Deduct card payment from bank account
+                    if (currentAccountBalances[event.bank_account_number] !== undefined) {
+                        currentAccountBalances[event.bank_account_number] += event.price; // price is negative
+                    }
+
+                    // 2. Reduce card debt (debt goes down, so we add the negative price to the positive debt)
+                    if (event.card_account_number && currentAccountBalances[event.card_account_number] !== undefined) {
+                        currentAccountBalances[event.card_account_number] += event.price; 
+                    }
+
+                    const key = `${event.bank_account_number}-${event.vendor || 'cc'}-${event.last4}`;
                     if (!ccGroupMap.has(key)) {
                         ccGroupMap.set(key, {
                             name: event.name,
                             last4: event.last4,
                             amount: 0,
                             vendor: event.vendor,
-                            account_number: event.account_number,
+                            account_number: event.bank_account_number,
                             count: 0
                         });
                     }
                     const grouped = ccGroupMap.get(key);
                     grouped.amount += event.price;
                     grouped.count += 1;
-
-                    currentAccountBalances[event.account_number] += event.price;
+                } else if (event.type === 'cc_purchase') {
+                    // Increase card debt
+                    if (event.card_account_number && currentAccountBalances[event.card_account_number] !== undefined) {
+                        currentAccountBalances[event.card_account_number] -= event.price; // price is negative, so subtracting it increases debt
+                    }
                 }
             });
         }
@@ -271,7 +299,11 @@ export function generateProjection(accounts, bankRecurring, manualRecurring, ccP
             displayName: `${item.name} ..${item.last4}`
         }));
 
-        const totalBalance = Object.values(currentAccountBalances).reduce((sum, b) => sum + b, 0);
+        // Net balance: bank accounts minus credit card debt
+        const totalBalance = accounts.reduce((sum, acc) => {
+            const bal = currentAccountBalances[acc.account_number] || 0;
+            return sum + (acc.is_bank !== false ? bal : -bal);
+        }, 0);
 
         const dailyChange = (i === 0) ? 0 : (
             dailyBankRecurring.reduce((sum, item) => sum + item.amount, 0) +

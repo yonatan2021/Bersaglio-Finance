@@ -313,8 +313,10 @@ export const ProjectionViewContent: React.FC<ProjectionViewContentProps> = ({
                             <Box sx={{ display: 'flex', gap: 3 }}>
                                 {accounts.map(acc => (
                                     <Box key={acc.account_number} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'primary.main' }} />
-                                        <Typography variant="caption" sx={{ fontWeight: 700 }}>{formatCurrency(acc.balance)}</Typography>
+                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: acc.is_bank ? 'primary.main' : 'secondary.main' }} />
+                                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                                            {acc.nickname}: {formatCurrency(acc.balance)}
+                                        </Typography>
                                     </Box>
                                 ))}
                             </Box>

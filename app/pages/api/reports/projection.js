@@ -13,8 +13,8 @@ export default async function handler(req, res) {
     const client = await getDB();
     try {
         // Run all independent queries in parallel for maximum efficiency
-        const [accountsRes, bankTransRes, manualRes, ccRes] = await Promise.all([
-            // 1. Get Accounts
+        const [accountsRes, manualRes, ccRes] = await Promise.all([
+            // 1. Get Accounts (both banks and credit cards)
             client.query(`
                 SELECT 
                     co.id,
@@ -22,38 +22,20 @@ export default async function handler(req, res) {
                     co.balance,
                     co.balance_updated_at,
                     co.custom_bank_account_nickname,
+                    co.vendor,
                     vc.nickname as vendor_nickname,
                     vc.id as credential_id
                 FROM card_ownership co
                 JOIN vendor_credentials vc ON co.credential_id = vc.id
-                WHERE co.vendor = ANY($1)
-                  AND co.is_hidden = false
-            `, [BANK_VENDORS]),
-            // 2. Get Bank Transactions (for recurring detection)
-            client.query(`
-                WITH excluded AS (
-                    SELECT LOWER(TRIM(name)) as name, account_number
-                    FROM non_recurring_exclusions
-                )
-                SELECT t.name, t.price, t.category, t.vendor, t.account_number, t.date, t.processed_date, t.transaction_type
-                FROM transactions t
-                WHERE t.transaction_type = 'bank'
-                  AND t.date >= CURRENT_DATE - INTERVAL '180 days'
-                  AND t.category NOT IN ('Bank', 'Income')
-                  AND NOT EXISTS (
-                      SELECT 1 FROM excluded e 
-                      WHERE LOWER(TRIM(t.name)) = e.name 
-                        AND (e.account_number IS NULL OR e.account_number = t.account_number)
-                  )
-                ORDER BY t.date DESC
+                WHERE co.is_hidden = false
             `),
-            // 3. Get Manual Recurring
+            // 2. Get Manual Recurring
             client.query(`
                 SELECT name, amount, category, account_number, day_of_month, frequency
                 FROM manual_recurring_payments
                 WHERE is_active = true
             `),
-            // 4. Get Future CC Payments
+            // 3. Get Future CC Payments
             client.query(`
                 SELECT 
                     t.name, t.price, t.date, t.processed_date, t.vendor, t.account_number, t.category,
@@ -75,28 +57,47 @@ export default async function handler(req, res) {
             `)
         ]);
 
-        const accounts = accountsRes.rows.map(row => ({
-            id: row.id,
-            account_number: row.account_number,
-            balance: parseFloat(row.balance || 0),
-            nickname: row.custom_bank_account_nickname || row.vendor_nickname,
-            credential_id: row.credential_id
-        }));
+        const futureCCPayments = ccRes.rows;
+        const cardBalances = {};
+        futureCCPayments.forEach(cc => {
+            const key = `${cc.vendor}-${cc.last4}`;
+            cardBalances[key] = (cardBalances[key] || 0) + Math.abs(parseFloat(cc.price || 0));
+        });
+
+        const accounts = accountsRes.rows.map(row => {
+            const isBank = BANK_VENDORS.includes(row.vendor);
+            const last4 = row.account_number.slice(-4);
+            const key = `${row.vendor}-${last4}`;
+            const startingBalance = isBank ? parseFloat(row.balance || 0) : (cardBalances[key] || 0);
+
+            const displayName = row.custom_bank_account_nickname || (isBank ? row.vendor_nickname : `${row.vendor_nickname || row.vendor} ..${last4}`);
+
+            return {
+                id: row.id,
+                account_number: row.account_number,
+                balance: startingBalance,
+                nickname: displayName,
+                credential_id: row.credential_id,
+                is_bank: isBank,
+                vendor: row.vendor
+            };
+        });
 
         const accountMetadata = {};
         accounts.forEach(acc => {
             accountMetadata[acc.account_number] = {
                 nickname: acc.nickname,
                 account_number: acc.account_number,
-                credential_id: acc.credential_id
+                credential_id: acc.credential_id,
+                is_bank: acc.is_bank,
+                vendor: acc.vendor
             };
         });
 
-        // Detect recurring payments from history
-        const allRecurring = detectRecurringPayments(bankTransRes.rows);
+        // Rely only on manual recurring payments
+        const allRecurring = [];
 
         // Process CC Data
-        const futureCCPayments = ccRes.rows;
         normalizeTransactionDates(futureCCPayments);
 
         // Generate Projection
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
         );
 
         const summary = {
-            startingBalance: accounts.reduce((sum, acc) => sum + acc.balance, 0),
+            startingBalance: accounts.reduce((sum, acc) => sum + (acc.is_bank ? acc.balance : -acc.balance), 0),
             endingBalance: projection.length > 0 ? projection[projection.length - 1].totalBalance : 0,
             periodDays: 30
         };

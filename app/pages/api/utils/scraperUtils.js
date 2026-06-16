@@ -30,6 +30,7 @@ import { installScrapeFetchInterceptor } from './scraperErrors.js';
 import logger from '../../../utils/logger.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { findReconciliationCandidates } from '../../../utils/reconciliation.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -547,6 +548,21 @@ export async function insertTransaction(client, transaction, vendor, accountNumb
         finalProcessedDate = formatLocalDate(new Date(d.getFullYear(), d.getMonth() + 1, cardBillingStartDay - 1));
       }
     }
+  }
+
+  // 5.5 Clean up pending or hashed duplicates if inserting a completed transaction
+  const incomingStatus = status || 'completed';
+  if (incomingStatus !== 'pending' && incomingStatus !== 'Pending') {
+    await client.query(`
+      DELETE FROM transactions 
+      WHERE vendor = $1 
+        AND COALESCE(account_number, '') = $2 
+        AND ABS(price) = $3 
+        AND LOWER(TRIM(name)) = $4 
+        AND ABS(date - $5::date) <= 2
+        AND (status = 'pending' OR status = 'Pending' OR LENGTH(identifier) = 40)
+        AND identifier != $6
+    `, [vendor, accountNumber || '', normalizedPrice, normalizedName, date, txId]);
   }
 
   // 6. Final Insert
@@ -1542,6 +1558,13 @@ export async function processScrapedAccounts({
     }
 
     await client.query('COMMIT');
+
+    // Trigger reconciliation candidate scan after successful transaction commit
+    try {
+      await findReconciliationCandidates(client);
+    } catch (recErr) {
+      logger.error({ error: recErr.message, stack: recErr.stack }, '[Scraper Utils] Failed to scan reconciliation candidates');
+    }
   } catch (err) {
     if (client) {
       await client.query('ROLLBACK');

@@ -198,7 +198,7 @@ describe('Transactions API Endpoint', () => {
             await handler(mockReq, mockRes);
 
             const [sql, params] = mockClient.query.mock.calls[0];
-            expect(sql).toContain('t.category = $3');
+            expect(sql).toContain('COALESCE(cc.category, t.category) = $3');
             expect(params).toContain('Food');
         });
 
@@ -216,7 +216,7 @@ describe('Transactions API Endpoint', () => {
             await handler(mockReq, mockRes);
 
             const [sql, params] = mockClient.query.mock.calls[0];
-            expect(sql).toContain('t.name ILIKE $3 OR t.vendor ILIKE $3 OR t.category ILIKE $3 OR t.identifier ILIKE $3');
+            expect(sql).toContain('COALESCE(cc.name, t.name) ILIKE $3 OR t.vendor ILIKE $3 OR COALESCE(cc.category, t.category) ILIKE $3 OR t.identifier ILIKE $3');
             expect(params).toContain('%gas%');
         });
 

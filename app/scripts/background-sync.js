@@ -12,9 +12,14 @@ import {
     updateCredentialLastSynced,
     getFetchCategoriesSetting,
     getScraperTimeout,
-    checkScraperConcurrency
+    checkScraperConcurrency,
+    loadCategorizationRules,
+    loadCategoryMappings,
+    getUpdateCategoryOnRescrapeSetting,
+    getBillingCycleStartDay,
+    processScrapedAccounts
 } from '../pages/api/utils/scraperUtils.js';
-import { APP_SETTINGS_KEYS, FETCH_SETTING_SQL } from '../utils/constants.js';
+import { APP_SETTINGS_KEYS, FETCH_SETTING_SQL, BANK_VENDORS } from '../utils/constants.js';
 
 
 // Standalone DB connection for the script
@@ -96,6 +101,11 @@ async function runBackgroundSync() {
             }
 
             const timeoutSetting = await getScraperTimeout(client, companyId);
+            const categorizationRules = await loadCategorizationRules(client);
+            const categoryMappings = await loadCategoryMappings(client);
+            const billingCycleStartDay = await getBillingCycleStartDay(client);
+            const updateCategoryOnRescrape = await getUpdateCategoryOnRescrapeSetting(client);
+            const isBank = BANK_VENDORS.includes(companyId);
 
             const startDate = new Date();
             startDate.setDate(startDate.getDate() - daysBack);
@@ -115,20 +125,22 @@ async function runBackgroundSync() {
                     throw new Error(result.errorMessage || 'Scraping failed');
                 }
 
-                let savedCount = 0;
-                for (const account of result.accounts) {
-                    if (!account.txns || !Array.isArray(account.txns)) continue;
+                const stats = await processScrapedAccounts({
+                    client,
+                    accounts: result.accounts,
+                    companyId,
+                    credentialId: row.id,
+                    categorizationRules,
+                    categoryMappings,
+                    billingCycleStartDay,
+                    updateCategoryOnRescrape,
+                    isBank,
+                    onAccountStarted: () => true,
+                    onTransactionProcessed: () => true
+                });
 
-                    for (const txn of account.txns) {
-                        const defaultCurrency = txn.originalCurrency || txn.chargedCurrency || 'ILS';
-                        const insertRes = await insertTransaction(client, txn, companyId, account.accountNumber, defaultCurrency);
-                        if (insertRes.success && !insertRes.duplicated) {
-                            savedCount++;
-                        }
-                    }
-                }
-
-                await updateScrapeAudit(client, auditId, 'success', `Background sync completed: saved ${savedCount} txns`);
+                const savedCount = stats.savedTransactions;
+                await updateScrapeAudit(client, auditId, 'success', `Background sync completed: saved ${savedCount} txns`, stats);
                 await updateCredentialLastSynced(client, row.id);
                 logger.info({ vendor: companyId, savedCount }, '[Background Sync] Account sync completed');
 

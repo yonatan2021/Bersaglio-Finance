@@ -100,7 +100,7 @@ const handler = createApiHandler({
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0) +
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
           COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
           ), 0)
         ) ${dir}, COALESCE(RIGHT(t.account_number, 4), 'Unknown') ASC`,
       },
@@ -126,7 +126,7 @@ const handler = createApiHandler({
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
           COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
           ), 0)::numeric as card_expenses,
           COUNT(*) OVER() as total_count
         FROM transactions t
@@ -146,7 +146,7 @@ const handler = createApiHandler({
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
           COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
           ), 0)::numeric as card_expenses,
           COUNT(*)::integer as count,
           COUNT(*) OVER() as total_count
@@ -164,7 +164,7 @@ const handler = createApiHandler({
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
           COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
           ), 0)::numeric as card_expenses,
           COALESCE(SUM(CASE WHEN t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as total_income,
           COALESCE(SUM(CASE WHEN t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as total_outflow,
@@ -172,7 +172,7 @@ const handler = createApiHandler({
             COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0) -
             COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) -
             COALESCE(SUM(
-              CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+              CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
             ), 0)
           )::numeric as net_balance,
           COALESCE(ba.id, vc.id) as bank_account_id,
@@ -203,7 +203,7 @@ const handler = createApiHandler({
             COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0) as bank_income,
             COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) as bank_expenses,
             COALESCE(SUM(
-              CASE WHEN t.transaction_type = 'credit_card' THEN ABS(t.price) ELSE 0 END
+              CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
             ), 0) as card_expenses
           FROM transactions t
           ${credentialJoin}

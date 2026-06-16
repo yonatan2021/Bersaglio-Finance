@@ -124,7 +124,13 @@ export function detectRecurringPayments(transactions: DetectionTransaction[]): D
                     frequency: frequency,
                     months: [...new Set(items.map(it => `${it.date.getFullYear()}-${String(it.date.getMonth() + 1).padStart(2, '0')}`).reverse() as string[])],
                     occurrences: items.map(it => ({ date: it.date, amount: it.price_raw })).reverse(),
-                    next_payment_date: calculateNextPayment(lastItem.date, frequency === 'monthly' ? 1 : 2),
+                    // Anchor next_payment_date to the billing date (processed_date) when available.
+                    // For cards that bill on the 2nd, this ensures the projection shows the 2nd — not ~30
+                    // days from the purchase date which could land on a completely different day.
+                    next_payment_date: calculateNextPayment(
+                        lastItem.processed_date ? new Date(lastItem.processed_date) : lastItem.date,
+                        frequency === 'monthly' ? 1 : 2
+                    ),
                     transaction_type: lastItem.transaction_type,
                     bank_nickname: lastItem.bank_nickname,
                     bank_account_display: lastItem.bank_account_display
@@ -166,7 +172,11 @@ export function detectRecurringPayments(transactions: DetectionTransaction[]): D
                     frequency: frequency,
                     months: [...new Set(groupTransactions.map(it => `${it.date.getFullYear()}-${String(it.date.getMonth() + 1).padStart(2, '0')}`).reverse() as string[])],
                     occurrences: groupTransactions.map(it => ({ date: it.date, amount: it.price_raw })).reverse(),
-                    next_payment_date: calculateNextPayment(lastItem.date, frequency === 'monthly' ? 1 : 2),
+                    // Anchor next_payment_date to the billing date (processed_date) when available.
+                    next_payment_date: calculateNextPayment(
+                        lastItem.processed_date ? new Date(lastItem.processed_date) : lastItem.date,
+                        frequency === 'monthly' ? 1 : 2
+                    ),
                     transaction_type: lastItem.transaction_type,
                     bank_nickname: lastItem.bank_nickname,
                     bank_account_display: lastItem.bank_account_display

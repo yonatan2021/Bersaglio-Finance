@@ -20,6 +20,7 @@ const BudgetDashboard = dynamic(() => import("./BudgetDashboard"), { ssr: false 
 const AIAssistant = dynamic(() => import("./AIAssistant"), { ssr: false });
 const ScrapeAuditView = dynamic(() => import("./ScrapeAuditView"), { ssr: false });
 const RecurringPaymentsView = dynamic(() => import("./RecurringPaymentsView"), { ssr: false });
+const ReconciliationView = dynamic(() => import("./ReconciliationView"), { ssr: false });
 const ChatView = dynamic(() => import("./ChatView"), { ssr: false });
 const DesignSystemShowcase = dynamic(() => import("./DesignSystemShowcase"), { ssr: false });
 const BreakdownView = dynamic(() => import("./BreakdownView"), { ssr: false });
@@ -28,7 +29,7 @@ const AccountsView = dynamic(() => import("./AccountsView"), { ssr: false });
 const VaultLockScreen = dynamic(() => import("./VaultLockScreen"), { ssr: false });
 const InsightsView = dynamic(() => import("./InsightsView"), { ssr: false });
 
-type ViewType = 'dashboard' | 'summary' | 'budget' | 'chat' | 'audit' | 'recurring' | 'design' | 'breakdown' | 'projection' | 'accounts' | 'insights';
+type ViewType = 'dashboard' | 'summary' | 'budget' | 'chat' | 'audit' | 'recurring' | 'reconciliation' | 'design' | 'breakdown' | 'projection' | 'accounts' | 'insights';
 
 // Screen context for AI Assistant
 interface ScreenContext {
@@ -146,6 +147,8 @@ const Layout: React.FC<LayoutProps> = ({ children, defaultView = 'summary' }) =>
         return <ScrapeAuditView />;
       case 'recurring':
         return <RecurringPaymentsView />;
+      case 'reconciliation':
+        return <ReconciliationView />;
       case 'design':
         return <DesignSystemShowcase />;
       case 'breakdown':

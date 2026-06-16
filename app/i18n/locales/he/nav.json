@@ -8,7 +8,8 @@
     "transactions": "עסקאות",
     "breakdown": "פירוט",
     "insights": "תובנות",
-    "recurring": "הוצאות קבועות",
+    "recurring": "תשלומים קבועים",
+    "reconciliation": "התאמת עסקאות",
     "projection": "תחזית",
     "audit": "יומן סנכרון",
     "accounts": "חשבונות"

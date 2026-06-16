@@ -119,7 +119,9 @@ export async function evaluateAnomalies() {
                 name: t.name,
                 price: t.price,
                 account_number: t.account_number,
-                date: t.date,
+                // Use the billing date (processed_date) when available so that CC charges
+                // are bucketed by when money actually leaves the account, not the purchase date.
+                date: t.processed_date ?? t.date,
             })),
         );
         detected.push(...priceHikes);
@@ -148,7 +150,13 @@ export async function evaluateAnomalies() {
         }
 
         detected.push(...detectCategorySpikes(
-            transactions.map((t) => ({ category: t.category, amount: t.price, date: t.date })),
+            transactions.map((t) => ({
+                category: t.category,
+                amount: t.price,
+                // Use the billing date (processed_date) when available so that CC charges
+                // land in the correct week — the one when the card was actually debited.
+                date: t.processed_date ?? t.date,
+            })),
         ));
 
         for (const a of detected) {

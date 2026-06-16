@@ -1219,33 +1219,35 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           {status && status.activeAccounts > 0 && (
             <Tooltip title={isSyncing ? t('modal.tooltipStop') : isVaultLocked ? t('modal.tooltipUnlockToSync') : t('modal.tooltipSyncAll')}>
-              <Button
-                onClick={handleSyncAll}
-                variant="contained"
-                size="small"
-                disabled={isStopping || isInitializing || isVaultLocked}
-                color={isSyncing ? "error" : "success"}
-                startIcon={
-                  isStopping || isInitializing ? (
-                    <CircularProgress size={16} sx={{ color: 'inherit' }} />
-                  ) : isSyncing ? (
-                    <CircularProgress size={16} sx={{ color: 'inherit' }} />
-                  ) : isVaultLocked ? (
-                    <LockIcon />
-                  ) : (
-                    <PlayArrowIcon />
-                  )
-                }
-                sx={{
-                  textTransform: 'none',
-                  fontSize: '0.75rem',
-                  px: 1.5,
-                  py: 0.5,
-                  minWidth: '110px'
-                }}
-              >
-                {isStopping ? t('modal.stopping') : isInitializing ? t('modal.starting') : isSyncing ? t('modal.stopNow') : isVaultLocked ? t('modal.locked') : t('modal.syncNow')}
-              </Button>
+              <span>
+                <Button
+                  onClick={handleSyncAll}
+                  variant="contained"
+                  size="small"
+                  disabled={isStopping || isInitializing || isVaultLocked}
+                  color={isSyncing ? "error" : "success"}
+                  startIcon={
+                    isStopping || isInitializing ? (
+                      <CircularProgress size={16} sx={{ color: 'inherit' }} />
+                    ) : isSyncing ? (
+                      <CircularProgress size={16} sx={{ color: 'inherit' }} />
+                    ) : isVaultLocked ? (
+                      <LockIcon />
+                    ) : (
+                      <PlayArrowIcon />
+                    )
+                  }
+                  sx={{
+                    textTransform: 'none',
+                    fontSize: '0.75rem',
+                    px: 1.5,
+                    py: 0.5,
+                    minWidth: '110px'
+                  }}
+                >
+                  {isStopping ? t('modal.stopping') : isInitializing ? t('modal.starting') : isSyncing ? t('modal.stopNow') : isVaultLocked ? t('modal.locked') : t('modal.syncNow')}
+                </Button>
+              </span>
             </Tooltip>
           )}
 
@@ -1678,18 +1680,20 @@ const SyncStatusModal: React.FC<SyncStatusModalProps> = ({ open, onClose, width,
                         />
                         <ListItemSecondaryAction sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Tooltip title={isVaultLocked ? t('accountStatus.tooltipUnlockToSync') : t('accountStatus.tooltipSyncOne')}>
-                            <IconButton
-                              size="small"
-                              onClick={() => prepareSyncOptionsForAccount(account.id, account.vendor, account.nickname || account.vendor)}
-                              disabled={isSyncing || isInitializing || isStopping || isVaultLocked}
-                              sx={{
-                                color: isVaultLocked ? theme.palette.text.disabled : '#60a5fa',
-                                p: 0.5,
-                                '&:hover': { backgroundColor: isVaultLocked ? 'transparent' : 'rgba(96, 165, 250, 0.1)' }
-                              }}
-                            >
-                              {isVaultLocked ? <LockIcon sx={{ fontSize: 18 }} /> : <RefreshIcon sx={{ fontSize: 18 }} />}
-                            </IconButton>
+                            <span>
+                              <IconButton
+                                size="small"
+                                onClick={() => prepareSyncOptionsForAccount(account.id, account.vendor, account.nickname || account.vendor)}
+                                disabled={isSyncing || isInitializing || isStopping || isVaultLocked}
+                                sx={{
+                                  color: isVaultLocked ? theme.palette.text.disabled : '#60a5fa',
+                                  p: 0.5,
+                                  '&:hover': { backgroundColor: isVaultLocked ? 'transparent' : 'rgba(96, 165, 250, 0.1)' }
+                                }}
+                              >
+                                {isVaultLocked ? <LockIcon sx={{ fontSize: 18 }} /> : <RefreshIcon sx={{ fontSize: 18 }} />}
+                              </IconButton>
+                            </span>
                           </Tooltip>
                           <Chip
                             icon={<AccessTimeIcon sx={{ fontSize: 14 }} />}

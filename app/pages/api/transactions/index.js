@@ -1,5 +1,5 @@
 import { createApiHandler } from "../utils/apiHandler";
-import { decrypt } from "../utils/encryption";
+import { safeDecrypt } from "../utils/encryption";
 import { getDB } from "../db";
 import { getBillingCycleSql } from "../../../utils/transaction_logic";
 import { getBillingCycleStartDay } from "../utils/scraperUtils";
@@ -192,11 +192,17 @@ const getTransactions = createApiHandler({
             conditions.push(`t.transaction_type = $${paramIndex}`);
             params.push(transactionType);
             paramIndex++;
+        } else if (transactionType === 'all' && !bankAccountId && !bankAccountNumber && !bankVendor && !accountNumber && !last4digits) {
+            // Hide reconciled duplicate bank transactions in main "all" list
+            conditions.push(`NOT EXISTS (
+                SELECT 1 FROM transaction_reconciliations tr 
+                WHERE tr.bank_identifier = t.identifier AND tr.bank_vendor = t.vendor AND tr.status = 'approved'
+            )`);
         }
 
         // 3. Search Clause
         if (q) {
-            conditions.push(`(t.name ILIKE $${paramIndex} OR t.vendor ILIKE $${paramIndex} OR t.category ILIKE $${paramIndex} OR t.identifier ILIKE $${paramIndex} OR t.notes ILIKE $${paramIndex})`);
+            conditions.push(`(COALESCE(cc.name, t.name) ILIKE $${paramIndex} OR t.vendor ILIKE $${paramIndex} OR COALESCE(cc.category, t.category) ILIKE $${paramIndex} OR t.identifier ILIKE $${paramIndex} OR t.notes ILIKE $${paramIndex})`);
             params.push(`%${q}%`);
             paramIndex++;
         }
@@ -216,12 +222,12 @@ const getTransactions = createApiHandler({
             paramIndex++;
         }
         if (category) {
-            conditions.push(`t.category = $${paramIndex}`);
+            conditions.push(`COALESCE(cc.category, t.category) = $${paramIndex}`);
             params.push(category);
             paramIndex++;
         }
         if (description) {
-            conditions.push(`t.name = $${paramIndex}`);
+            conditions.push(`COALESCE(cc.name, t.name) = $${paramIndex}`);
             params.push(description);
             paramIndex++;
         }
@@ -235,7 +241,7 @@ const getTransactions = createApiHandler({
             }
         }
         if (uncategorizedOnly === 'true') {
-            conditions.push(`(t.category IS NULL OR t.category = '' OR t.category = 'N/A')`);
+            conditions.push(`(COALESCE(cc.category, t.category) IS NULL OR COALESCE(cc.category, t.category) = '' OR COALESCE(cc.category, t.category) = 'N/A')`);
         }
 
         // 5. Bank Account specific filters (supporting transactions_by_bank_account logic)
@@ -261,6 +267,10 @@ const getTransactions = createApiHandler({
         const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'date';
         const sortDir = sortOrder?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
+        let orderByCol = `t.${sortCol}`;
+        if (sortCol === 'name') orderByCol = `COALESCE(cc.name, t.name)`;
+        else if (sortCol === 'category') orderByCol = `COALESCE(cc.category, t.category)`;
+
         const limitVal = parseInt(limit, 10) || 100;
         const offsetVal = parseInt(offset, 10) || 0;
         params.push(limitVal, offsetVal);
@@ -273,15 +283,15 @@ const getTransactions = createApiHandler({
           t.identifier,
           t.vendor,
           t.date,
-          t.name,
+          COALESCE(cc.name, t.name) as name,
           t.price,
-          t.category,
+          COALESCE(cc.category, t.category) as category,
           t.type,
           t.processed_date,
           t.original_amount,
           t.original_currency,
           t.charged_currency,
-          t.memo,
+          COALESCE(cc.memo, t.memo) as memo,
           t.status,
           t.installments_number,
           t.installments_total,
@@ -292,13 +302,19 @@ const getTransactions = createApiHandler({
           t.is_favorite,
           t.notes,
           vc.nickname as vendor_nickname,
-          vc.card6_digits as card6_digits_encrypted
+          vc.card6_digits as card6_digits_encrypted,
+          tr.cc_identifier as matched_cc_identifier,
+          tr.cc_vendor as matched_cc_vendor,
+          cc.vendor as cc_vendor_resolved,
+          cc.account_number as cc_account_number_resolved
         FROM transactions t
         LEFT JOIN card_ownership co ON t.vendor = co.vendor AND t.account_number = co.account_number
         LEFT JOIN vendor_credentials vc ON co.credential_id = vc.id
         LEFT JOIN vendor_credentials ba ON ba.id = ${bankAccountParamIndex ? `$${bankAccountParamIndex}` : 'NULL'}
+        LEFT JOIN transaction_reconciliations tr ON t.identifier = tr.bank_identifier AND t.vendor = tr.bank_vendor AND tr.status = 'approved'
+        LEFT JOIN transactions cc ON tr.cc_identifier = cc.identifier AND tr.cc_vendor = cc.vendor
         ${whereClause}
-        ORDER BY t.${sortCol} ${sortDir}, t.identifier, t.vendor
+        ORDER BY ${orderByCol} ${sortDir}, t.identifier, t.vendor
         LIMIT ${limitParam}
         OFFSET ${offsetParam}
       `,
@@ -340,7 +356,7 @@ const getTransactions = createApiHandler({
         }
         return result.rows.map(row => ({
             ...row,
-            card6_digits: row.card6_digits_encrypted ? decrypt(row.card6_digits_encrypted) : null,
+            card6_digits: row.card6_digits_encrypted ? safeDecrypt(row.card6_digits_encrypted) : null,
             card6_digits_encrypted: undefined
         }));
     }

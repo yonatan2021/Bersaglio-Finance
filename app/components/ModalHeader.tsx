@@ -18,6 +18,7 @@ export default function ModalHeader({ title, onClose, actions, startAction }: Mo
   const theme = useTheme();
   return (
     <DialogTitle
+      component="div"
       sx={{
         color: theme.palette.text.primary,
         display: 'flex',
@@ -29,6 +30,7 @@ export default function ModalHeader({ title, onClose, actions, startAction }: Mo
       }}
     >
       <Typography
+        component="div"
         variant="h6"
         sx={{
           fontWeight: 700,

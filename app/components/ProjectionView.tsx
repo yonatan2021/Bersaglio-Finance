@@ -37,7 +37,7 @@ interface NewRecurringState {
 interface ProjectionViewContentProps {
     loading: boolean;
     data: ProjectionData[];
-    accounts: Array<{ id?: number; account_number: string; nickname?: string; credential_id?: number; balance?: number }>;
+    accounts: Array<{ id?: number; account_number: string; nickname?: string; credential_id?: number; balance?: number; is_bank?: boolean }>;
     selectedAccount: string | 'total';
     setSelectedAccount: (val: string | 'total') => void;
     categories: string[];

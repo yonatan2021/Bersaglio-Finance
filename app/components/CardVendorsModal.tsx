@@ -579,8 +579,10 @@ export default function CardVendorsModal({ open, onClose }: CardVendorsModalProp
           select
           size="small"
           autoFocus={focusedField === 'cardType'}
-          SelectProps={{
-            defaultOpen: focusedField === 'cardType',
+          slotProps={{
+            select: {
+              defaultOpen: focusedField === 'cardType',
+            },
           }}
           value={editValues.isDebit ? 'debit' : 'credit'}
           onClick={(e) => e.stopPropagation()}
@@ -597,7 +599,7 @@ export default function CardVendorsModal({ open, onClose }: CardVendorsModalProp
               setTimeout(() => {
                 handleSave(editingCard, newValues).then((success) => {
                   if (success) {
-                    setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.cardSettingsSaved'), severity: 'success' });
+                    showSnackbar(t('misc:cardVendors.snackbar.cardSettingsSaved'), 'success');
                   }
                 });
               }, 200);
@@ -656,7 +658,7 @@ export default function CardVendorsModal({ open, onClose }: CardVendorsModalProp
               handleSave(editingCard, editValues).then((success) => {
                 if (success) {
                   setEditingCard(null);
-                  setSnackbar({ open: true, message: t('misc:cardVendors.snackbar.cardSettingsSaved'), severity: 'success' });
+                  showSnackbar(t('misc:cardVendors.snackbar.cardSettingsSaved'), 'success');
                 }
               });
             } else {
@@ -668,7 +670,9 @@ export default function CardVendorsModal({ open, onClose }: CardVendorsModalProp
               (e.target as HTMLElement).blur();
             }
           }}
-          inputProps={{ min: 1, max: 28 }}
+          slotProps={{
+            htmlInput: { min: 1, max: 28 },
+          }}
           placeholder={t('misc:cardVendors.billingCycleStartDayPlaceholder')}
           fullWidth
           sx={{

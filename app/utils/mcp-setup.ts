@@ -23,7 +23,7 @@ function handleMcpError(error: unknown) {
         return {
             isError: true,
             content: [{
-                type: "text",
+                type: "text" as const,
                 text: JSON.stringify({
                     status: "error",
                     code: error.code,
@@ -37,7 +37,7 @@ function handleMcpError(error: unknown) {
     }
     return {
         isError: true,
-        content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }]
+        content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }]
     };
 }
 

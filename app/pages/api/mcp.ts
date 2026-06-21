@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- MCP transport interop with Node http req/res; SSEServerTransport exposes session state via a private field that needs an `as any` access */
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { createMcpServer } from "../../utils/mcp-setup";
+import { createMcpServer, ToolGroup } from "../../utils/mcp-tools";
 import logger from "../../utils/logger";
 
 // Global storage for active transports
@@ -41,7 +41,16 @@ export default async function handler(req: any, res: any) {
         }
 
         const transport = new SSEServerTransport("/api/mcp", res);
-        const server = createMcpServer();
+        const queryGroups = req.query.groups as string | undefined;
+        const VALID_GROUPS = ["core", "write", "admin"] as const;
+        const groups = queryGroups
+            ? (queryGroups
+                  .split(",")
+                  .map(g => g.trim())
+                  .filter((g): g is ToolGroup => VALID_GROUPS.includes(g as any)))
+            : undefined;
+
+        const server = createMcpServer(groups);
 
         await server.connect(transport);
 

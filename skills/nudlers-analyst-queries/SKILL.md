@@ -1,6 +1,6 @@
 ---
 name: nudlers-analyst-queries
-description: "Financial analyst workflows for queries: step-by-step guidance for answering financial queries, spending comparisons, subscription tracking, trend insights, and balance projections using Nudlers MCP. Depends on nudlers-data-access for tool parameters."
+description: "Use when answering spending queries, performing month-over-month comparisons, tracking recurring subscriptions or installments, or retrieving balance projections using Nudlers MCP."
 version: 1.0.0
 author: Yoni Gelfman
 license: MIT
@@ -79,15 +79,16 @@ Period 1: { "billingCycle": "2025-05" }  ← current
 Period 2: { "billingCycle": "2025-04" }  ← previous
 ```
 
-### Step 3: Compare and identify trends
-For each category:
-- Calculate change: `current - previous`
-- Calculate % change: `((current - previous) / previous) * 100`
-- Highlight: categories with >20% increase
+### Step 3: Compare and Identify Trends
+To ensure mathematical accuracy and standard Hebrew presentation, run the monthly-comparer tool using the current and previous cycles (or JSON file paths containing the category breakdowns):
+```bash
+node skills/nudlers-analyst-queries/tools/monthly-comparer.js --current 2025-05 --previous 2025-04
+```
 
-### Step 4: Present comparison
+This will automatically compare categories, calculate differences and percentages, and generate the Hebrew report layout:
 ```
 השוואה: מאי 2025 vs. אפריל 2025
+```
 
 📈 עלייה משמעותית:
 • מסעדות: ₪1,400 ← ₪1,100 (+₪300, +27%) ⚠️
@@ -203,12 +204,12 @@ Present:
 
 ### Stale data
 If the user hasn't synced recently, analysis may miss recent transactions. Before major analysis:
-- `get_sync_status` to check last sync time
+- `get_sync_status` (in the `admin` group) to check last sync time
 - If last sync was >24 hours ago: "הנתונים האחרונים הם מ-[date]. לתוצאות מדויקות יותר, מומלץ לסנכרן."
 
 ### Missing categories
 When user mentions a category and you're unsure of the exact name:
-1. `get_all_categories` first
+1. `get_all_categories` (in the `write` group) first
 2. Find the closest match
 3. Then call `get_category_expenses`
 
@@ -220,6 +221,6 @@ When user mentions a category and you're unsure of the exact name:
 ### No data returned
 If a tool returns empty data:
 1. Check if the billing cycle is correct
-2. Run `get_sync_status` — maybe data wasn't synced
+2. Run `get_sync_status` (in the `admin` group) — maybe data wasn't synced
 3. Try a different date range
 4. Tell the user what you found (or didn't find) honestly

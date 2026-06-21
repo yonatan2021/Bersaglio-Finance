@@ -1,6 +1,6 @@
 ---
 name: nudlers-analyst-budgets
-description: "Financial analyst workflows for budget management: step-by-step guidance for category & overall budgets, rules, and anomalies using Nudlers MCP. Depends on nudlers-data-access for tool parameters."
+description: "Use when managing monthly category and overall budgets, setting budget limits, reviewing overages, listing categorization rules, or updating transaction categories using Nudlers MCP."
 version: 1.0.0
 author: Yoni Gelfman
 license: MIT
@@ -32,16 +32,18 @@ You are a personal financial analyst for an Israeli user. You have access to the
 Use when the user asks: "האם אני בתקציב?", "כמה תקציב נשאר?", "איפה חרגתי?", "מה הסטטוס של התקציב?"
 
 ### Step 1: Fetch budget data
-Call `get_budgets` with the relevant billing cycle.
+Call the `budget` tool with `action: "get"` and the relevant `billingCycle` format.
 
-### Step 2: Identify status
-- 🔴 Over budget (>100%): highlight these first
-- 🟡 Warning (80–100%): mention as "קרוב לגבול"
-- ✅ On track (<80%): list briefly
+### Step 2: Format and Present Report
+To ensure absolute mathematical accuracy and standard Hebrew presentation, run the formatting tool using the billing cycle (or by piping the budget tool JSON output):
+```bash
+node skills/nudlers-analyst-budgets/tools/budget-reporter.js 2025-04
+```
 
-### Step 3: Present with action items
+This will automatically generate the Hebrew report layout:
 ```
 תקציב — אפריל 2025
+
 
 🔴 חרגת:
 • מסעדות: ₪1,100 / ₪800 (137%) — חריגה של ₪300
@@ -66,8 +68,8 @@ Tell the user: "לא הוגדרו תקציבים. ניתן להגדיר תקצי
 
 ### Step 6: Adjusting Budgets
 If the user wants to adjust/update a budget limit or set a new one:
-- Category budget: call `set_category_budget` with `category` and `budgetLimit`.
-- Total budget: call `set_total_budget` with `budgetLimit`.
+- Category budget: call the `budget` tool with `action: "set_category"`, `category`, and `amount` (limit in ILS).
+- Total budget: call the `budget` tool with `action: "set_total"` and `amount` (overall limit).
 Always confirm with the user before setting a budget.
 
 ---
@@ -77,7 +79,7 @@ Always confirm with the user before setting a budget.
 Use when the user asks: "יש תנועות מוזרות?", "תבדוק לי חריגות", "האם יש משהו חשוד בחשבון?", "יש עסקאות כפולות?"
 
 ### Step 1: Fetch anomalies
-Call `get_anomalies` with `status: "open"`.
+Call the `anomalies` tool with `action: "list"` and `status: "open"`.
 
 ### Step 2: Present anomalies
 Report all detected anomalies clearly in Hebrew:
@@ -87,9 +89,9 @@ Report all detected anomalies clearly in Hebrew:
 
 ### Step 3: Action plan
 For each anomaly, ask the user if they want to:
-- Acknowledge it (mark as normal/known): Call `update_anomaly_status` with `status: "acknowledged"`
-- Dismiss it: Call `update_anomaly_status` with `status: "dismissed"`
-- Proactively run the anomaly detection scanner if they synced new data: Call `trigger_anomaly_evaluation`.
+- Acknowledge it (mark as normal/known): Call the `anomalies` tool with `action: "update"`, `id` (number), and `status: "acknowledged"`.
+- Dismiss it: Call the `anomalies` tool with `action: "update"`, `id` (number), and `status: "dismissed"`.
+- Proactively run the anomaly detection scanner if they synced new data: Call the `anomalies` tool with `action: "evaluate"`.
 
 ---
 
@@ -106,19 +108,19 @@ If the user corrects a single transaction category:
 If the user wants to categorize all transactions matching a specific merchant name/description:
 1. Explain to the user that they can apply this change retroactively and create a rule for all future transactions:
    - "אני יכול לעדכן את כל עסקאות '[description]' לקטגוריה '[newCategory]'. האם תרצה להחיל זאת גם כחוק קבוע עבור עסקאות עתידיות?"
-2. Call `update_category_by_description` with `createRule: true` if the user wants a permanent rule (always ask first!). Set to `false` if they only want a one-time retroactive cleanup.
+2. Call the `categorization_rules` tool with `action: "update_by_description"`, `description`, `newCategory`, and `createRule: true` if the user wants a permanent rule (always ask first!). Set `createRule: false` if they only want a one-time retroactive cleanup.
 
 ### Case C: Managing custom rules
-- To view existing rules: Call `list_categorization_rules`
-- To manually add a rule: Call `create_categorization_rule`
+- To view existing rules: Call the `categorization_rules` tool with `action: "list"`.
+- To manually add a rule: Call the `categorization_rules` tool with `action: "create"`, `namePattern`, and `targetCategory`.
 - To delete a rule:
-  - **⚠️ Confirmation Protocol**: Always request the user's explicit confirmation before calling `delete_categorization_rule`, as this is irreversible. E.g. "האם אתה בטוח שברצונך למחוק את חוק הקטלוג [ID]?"
+  - ⚠️ Confirmation Protocol: Always request the user's explicit confirmation before calling `categorization_rules` with `action: "delete"`, as this is irreversible. E.g. "האם אתה בטוח שברצונך למחוק את חוק הקטלוג [ID]?"
 
 ### Case D: Bulk Rule Application
 If the user wants to apply all active categorization rules retroactively to their entire database history:
-1. **⚠️ Explanation Protocol**: Before calling `apply_categorization_rules`, the agent MUST explain to the user what is about to happen. This is a heavy operation that runs all active rules on all historical transactions in the database, potentially updating categories in bulk.
+1. ⚠️ Explanation Protocol: Before calling the rules engine, the agent MUST explain to the user what is about to happen. This is a heavy operation that runs all active rules on all historical transactions in the database, potentially updating categories in bulk.
 2. E.g.: "אני עומד להריץ את כל חוקי הסיווג הפעילים על כל העסקאות בהיסטוריית החשבון. זו פעולה כבדה שעשויה לשנות ולעדכן קטגוריות עבור כמות גדולה של עסקאות בעבר."
-3. **Note**: Explicit user confirmation/approval is NOT strictly mandatory for this tool, but explaining the impact to the user beforehand is required. Call `apply_categorization_rules` right after delivering this explanation.
+3. Note: Explicit user confirmation/approval is NOT strictly mandatory for this tool, but explaining the impact to the user beforehand is required. Call the `categorization_rules` tool with `action: "apply"` right after delivering this explanation.
 
 ---
 

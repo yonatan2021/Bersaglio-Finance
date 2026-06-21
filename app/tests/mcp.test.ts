@@ -229,31 +229,23 @@ describe('MCP Server API', () => {
         expect(initRes.body).toContain('get_category_expenses');
         expect(initRes.body).toContain('get_all_categories');
         expect(initRes.body).toContain('search_transactions');
-        expect(initRes.body).toContain('get_budgets');
+        expect(initRes.body).toContain('budget');
         expect(initRes.body).toContain('get_sync_status');
         expect(initRes.body).toContain('get_recurring_payments');
         expect(initRes.body).toContain('list_accounts');
-        expect(initRes.body).toContain('get_all_transactions');
         expect(initRes.body).toContain('add_manual_expense');
         expect(initRes.body).toContain('get_category_breakdown');
         expect(initRes.body).toContain('get_balance_projection');
 
-        // Verify the 15 new secure/management tools are also listed
+        // Verify other tools are listed
         expect(initRes.body).toContain('trigger_full_sync');
         expect(initRes.body).toContain('get_vault_status');
-        expect(initRes.body).toContain('get_anomalies');
-        expect(initRes.body).toContain('trigger_anomaly_evaluation');
-        expect(initRes.body).toContain('update_anomaly_status');
-        expect(initRes.body).toContain('set_category_budget');
-        expect(initRes.body).toContain('set_total_budget');
-        expect(initRes.body).toContain('get_total_budget');
-        expect(initRes.body).toContain('update_category_by_description');
-        expect(initRes.body).toContain('list_categorization_rules');
-        expect(initRes.body).toContain('create_categorization_rule');
-        expect(initRes.body).toContain('delete_categorization_rule');
-        expect(initRes.body).toContain('apply_categorization_rules');
+        expect(initRes.body).toContain('anomalies');
+        expect(initRes.body).toContain('categorization_rules');
         expect(initRes.body).toContain('update_transaction_details');
         expect(initRes.body).toContain('manage_non_recurring_exclusion');
+        expect(initRes.body).toContain('list_cards');
+        expect(initRes.body).toContain('configure_card');
 
         // Cleanup
         initReq.emit('close');
@@ -396,8 +388,8 @@ describe('MCP Server API', () => {
             id: 4,
             method: "tools/call",
             params: {
-                name: "get_anomalies",
-                arguments: { status: "open" }
+                name: "anomalies",
+                arguments: { action: "list", status: "open" }
             }
         };
 
@@ -758,8 +750,8 @@ describe('MCP Server API', () => {
             id: 8,
             method: "tools/call",
             params: {
-                name: "get_all_transactions",
-                arguments: { billingCycle: "2026-05" }
+                name: "get_category_expenses",
+                arguments: { category: "Dining", billingCycle: "2026-05" }
             }
         };
 

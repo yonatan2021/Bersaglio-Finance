@@ -1,3 +1,8 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Standalone output for minimal Docker images
@@ -5,6 +10,10 @@ const nextConfig = {
   // Custom port
   env: {
     PORT: '6969',
+  },
+  // Fix Turbopack root directory detection
+  turbopack: {
+    root: __dirname,
   },
   // Baileys is added as an external because it has optional image-processing
   // deps (jimp, sharp) that are imported via `import('...').catch(() => {})`

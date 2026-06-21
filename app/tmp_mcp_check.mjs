@@ -19,10 +19,10 @@ const calls = {
   vault: await call('get_vault_status'),
   accounts: await call('list_accounts'),
   balance: await call('get_balance_projection'),
-  budgets: await call('get_budgets'),
+  budgets: await call('budget', { action: 'get' }),
   categoryCurrent: await call('get_category_breakdown'),
   categoryPrevious: await call('get_category_breakdown', { billingCycle: '2026-05' }),
-  anomalies: await call('get_anomalies', { status: 'open' }),
+  anomalies: await call('anomalies', { action: 'list', status: 'open' }),
   recurring: await call('get_recurring_payments'),
 };
 console.log(JSON.stringify(calls, null, 2));

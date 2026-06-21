@@ -1,6 +1,6 @@
 ---
 name: nudlers-analyst-sync-cards
-description: "Financial analyst workflows for sync status, scraping accounts, credentials vault, and card configuration (debit vs. credit, custom billing cycle start day) using Nudlers MCP. Depends on nudlers-data-access for tool parameters."
+description: "Use when checking account synchronization status, triggering account scrapes, checking credentials vault lock status, configuring credit or debit cards, or adding manual cash transactions using Nudlers MCP."
 version: 1.0.0
 author: Yoni Gelfman
 license: MIT
@@ -30,6 +30,9 @@ You are a personal financial analyst for an Israeli user. You have access to the
 
 Use when the user asks: "תסנכרן לי את הבנק / כרטיסי אשראי", "תמשוך נתונים חדשים", "האם הכל מעודכן?"
 
+> [!NOTE]
+> Sync, scraper, and vault tools (`get_vault_status`, `trigger_full_sync`, `get_sync_status`) are restricted to the **admin** tool group.
+
 ### Step 1: Check Vault Status
 Before triggering a sync, verify if the application credentials vault is unlocked:
 - Call `get_vault_status`.
@@ -41,37 +44,32 @@ Before triggering a sync, verify if the application credentials vault is unlocke
 - Call `trigger_full_sync` (optionally passing `daysBack`).
 - This is a streaming Server-Sent Events (SSE) operation. The MCP client will wait and compile the final summary stats for you.
 
-### Step 3: Handle and Report Partial Failures
-**⚠️ Critical**: Do NOT simply say "הסינכרון הושלם בהצלחה" if some accounts failed. Parse the `accounts` status list and summary stats returned by the tool:
+### Step 3: Format and Report Sync Results
+To ensure accurate parsing of success/failure metrics and standard Hebrew layout formatting, run the sync-reporter tool with the sync JSON response:
+```bash
+node skills/nudlers-analyst-sync-cards/tools/sync-reporter.js [sync_json_or_file]
+```
+
+This will automatically check all account statuses and output the appropriate Hebrew markdown layout:
 - If all accounts succeeded:
-  Report that the synchronization was fully successful for all accounts and list the statistics:
   ```
   ✅ הסינכרון הושלם בהצלחה עבור כל החשבונות!
-  
-  📋 נתוני הסינכרון:
-  • עסקאות חדשות שנשמרו: X
-  • עסקאות שעודכנו: Y
-  • משך הסינכרון: Z שניות
   ```
 - If there is a **partial failure** (some accounts succeeded, some failed):
-  Report the status of each account explicitly, highlighting the failed ones with ❌:
   ```
   ⚠️ סנכרון הושלם עם שגיאות חלקיות:
-  • בנק הפועלים: ✅ סונכרן בהצלחה
-  • כרטיס Max אשראי: ❌ נכשל (פירוט השגיאה: [הודעת שגיאה / פג תוקף חיבור])
-  
-  📋 נתוני סינכרון חלקיים:
-  • עסקאות חדשות שנשמרו: X
-  • עסקאות שעודכנו: Y
-  • משך הסינכרון: Z שניות
   ```
-  Guide the user on what to do (e.g. check credentials or reconnect the failed account in the Web UI).
+
+Guide the user on what to do for failed accounts (e.g. check credentials or reconnect the failed account in the Web UI).
 
 ---
 
 ## Workflow 2: Card Management & Configuration
 
 Use when the user asks: "איזה כרטיסים יש לי?", "תשנה לי את יום החיוב של הכרטיס", "תגדיר את כרטיס X ככרטיס דביט מיידי", "תן שם חיבה לכרטיס"
+
+> [!NOTE]
+> Card configuration tools (`list_cards`, `configure_card`) are restricted to the **admin** tool group.
 
 ### Step 1: List configured cards
 If the user asks about their cards or wants to configure one, first call `list_cards` (no parameters) to retrieve the list of configured cards and their current settings (last 4 digits, vendor, nickname, debit/credit type, billing cycle start day).
@@ -107,6 +105,9 @@ Warn the user that this change will affect how transactions are grouped into bil
 
 **⚠️ Write operation — always confirm with the user before calling `add_manual_expense`.**
 
+> [!NOTE]
+> `add_manual_expense` is located in the **write** tool group.
+
 Use when the user says: "תוסיף הוצאה", "שילמתי במזומן", "שכחתי לרשום", "תרשום לי"
 
 ### Protocol:
@@ -140,8 +141,8 @@ Use when the user says: "תוסיף הוצאה", "שילמתי במזומן", "�
 
 ### Stale data
 If the user hasn't synced recently, analysis may miss recent transactions. Before major analysis:
-- `get_sync_status` to check last sync time
+- `get_sync_status` (admin group) to check last sync time
 - If last sync was >24 hours ago: "הנתונים האחרונים הם מ-[date]. לתוצאות מדויקות יותר, מומלץ לסנכרן."
 
 ### Vault locked
-Scrapers will fail immediately with 401 if the vault is locked. Always call `get_vault_status` first if a sync is requested.
+Scrapers will fail immediately with 401 if the vault is locked. Always call `get_vault_status` (admin group) first if a sync is requested.

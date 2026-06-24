@@ -4,7 +4,7 @@ export function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Pro
     const hit = store.get(key);
     if (hit && Date.now() < hit.expires) return Promise.resolve(hit.data as T);
     const promise = fn();
-    promise.then((data) => store.set(key, { data, expires: Date.now() + ttlMs }));
+    promise.then((data) => store.set(key, { data, expires: Date.now() + ttlMs })).catch(() => {});
     return promise;
 }
 

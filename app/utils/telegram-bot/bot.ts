@@ -1,6 +1,7 @@
 import { Bot, session } from 'grammy';
 import { loadMessagingSettings } from '../messaging/settings.js';
 import { authMiddleware } from './auth';
+import { registerStatusHandler } from './handlers/status';
 import { mainMenuKeyboard } from './keyboards';
 import { t } from './i18n';
 import logger from '../logger.js';
@@ -22,6 +23,9 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
             reply_markup: mainMenuKeyboard(),
         });
     });
+
+    // Register handlers
+    registerStatusHandler(bot, getDB);
 
     bot.catch((err) => {
         logger.error({ err: err.message, stack: err.stack }, '[telegram-bot] Unhandled error');

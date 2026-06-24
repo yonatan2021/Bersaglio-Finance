@@ -7,6 +7,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { ModalData } from './types';
@@ -55,7 +56,9 @@ const CategoryDashboard: React.FC = () => {
     handleUpdateTransaction,
     handleScroll,
     favoritesOnly,
-    setFavoritesOnly
+    setFavoritesOnly,
+    sourceTypeFilter,
+    setSourceTypeFilter
   } = useTransactions();
 
   const handleYearChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -192,6 +195,21 @@ const CategoryDashboard: React.FC = () => {
               backgroundClip: 'content-box'
             }
           }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            {(['', 'credit', 'debit', 'direct'] as const).map(type => (
+              <Chip
+                key={type || 'all'}
+                label={type === '' ? t('transactions.filterAll') : type === 'credit' ? t('transactions.filterCredit') : type === 'debit' ? t('transactions.filterDebit') : t('transactions.filterDirect')}
+                variant={sourceTypeFilter === type ? 'filled' : 'outlined'}
+                onClick={() => setSourceTypeFilter(type)}
+                size="small"
+                sx={{
+                  fontWeight: sourceTypeFilter === type ? 700 : 400,
+                  borderRadius: '20px'
+                }}
+              />
+            ))}
+          </Box>
           <TransactionsTable
             transactions={transactions}
             isLoading={loadingTransactions}

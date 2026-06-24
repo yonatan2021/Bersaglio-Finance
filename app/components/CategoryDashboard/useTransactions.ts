@@ -26,6 +26,7 @@ export function useTransactions() {
   const [hasMore, setHasMore] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [favoritesOnly, setFavoritesOnly] = React.useState(false);
+  const [sourceTypeFilter, setSourceTypeFilter] = React.useState<string>('');
   const scrollThrottleRef = React.useRef(false);
 
   const fetchTransactionsWithRange = React.useCallback(async (
@@ -61,6 +62,9 @@ export function useTransactions() {
       if (favoritesOnly) {
         url.searchParams.append("favoritesOnly", "true");
       }
+      if (sourceTypeFilter) {
+        url.searchParams.append("sourceType", sourceTypeFilter);
+      }
 
       const response = await fetch(url.toString());
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -93,7 +97,7 @@ export function useTransactions() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- transactions.length is intentionally excluded; including it would cause a refetch loop after every page append
-  }, [selectedYear, selectedMonth, sortBy, sortOrder, favoritesOnly]);
+  }, [selectedYear, selectedMonth, sortBy, sortOrder, favoritesOnly, sourceTypeFilter]);
 
   const handleSearch = React.useCallback(async (e?: React.FormEvent, isLoadMore: boolean = false) => {
     e?.preventDefault();
@@ -132,6 +136,9 @@ export function useTransactions() {
       if (favoritesOnly) {
         queryParams += `&favoritesOnly=true`;
       }
+      if (sourceTypeFilter) {
+        queryParams += `&sourceType=${sourceTypeFilter}`;
+      }
 
       const response = await fetch(`/api/transactions?${queryParams}`);
       if (response.ok) {
@@ -161,7 +168,7 @@ export function useTransactions() {
     fetchTransactionsWithRange, dateRangeMode,
     customStartDate, customEndDate,
     selectedYear, selectedMonth,
-    sortBy, sortOrder, favoritesOnly, showNotification
+    sortBy, sortOrder, favoritesOnly, sourceTypeFilter, showNotification
   ]);
 
   const handleSort = (field: string) => {
@@ -213,7 +220,7 @@ export function useTransactions() {
         fetchTransactionsWithRange(startDate, endDate, billingCycle);
       }
     });
-  }, [startDate, endDate, billingCycle, fetchTransactionsWithRange, searchQuery, favoritesOnly, handleSearch]);
+  }, [startDate, endDate, billingCycle, fetchTransactionsWithRange, searchQuery, favoritesOnly, sourceTypeFilter, handleSearch]);
 
   // Stable event listener - attached once, never re-attached
   React.useEffect(() => {
@@ -299,6 +306,8 @@ export function useTransactions() {
     handleUpdateTransaction,
     handleScroll,
     favoritesOnly,
-    setFavoritesOnly
+    setFavoritesOnly,
+    sourceTypeFilter,
+    setSourceTypeFilter
   };
 }

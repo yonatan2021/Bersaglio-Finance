@@ -5,7 +5,11 @@
     "showAll": "Show All Transactions",
     "showFavorites": "Show Favorites Only",
     "endOfPeriod": "That's all for this period ✨",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "filterAll": "All",
+    "filterCredit": "Credit Card",
+    "filterDebit": "Debit",
+    "filterDirect": "Direct Bank"
   },
   "insights": {
     "title": "Insights",

@@ -5,7 +5,11 @@
     "showAll": "הצגת כל העסקאות",
     "showFavorites": "הצגת מועדפים בלבד",
     "endOfPeriod": "זה הכל לתקופה זו ✨",
-    "unassigned": "ללא קטגוריה"
+    "unassigned": "ללא קטגוריה",
+    "filterAll": "הכל",
+    "filterCredit": "אשראי",
+    "filterDebit": "דביט",
+    "filterDirect": "ישיר מבנק"
   },
   "insights": {
     "title": "תובנות",

@@ -143,7 +143,8 @@ const getTransactions = createApiHandler({
             offset = 0,
             summary,
             availableMonths,
-            favoritesOnly
+            favoritesOnly,
+            sourceType
         } = req.query;
 
         if (summary === 'true') {
@@ -242,6 +243,18 @@ const getTransactions = createApiHandler({
         }
         if (uncategorizedOnly === 'true') {
             conditions.push(`(COALESCE(cc.category, t.category) IS NULL OR COALESCE(cc.category, t.category) = '' OR COALESCE(cc.category, t.category) = 'N/A')`);
+        }
+
+        // 4b. Source type filter
+        if (sourceType === 'credit') {
+            conditions.push(`(t.transaction_type = 'credit_card' AND (cv.is_debit IS NULL OR cv.is_debit = false))`);
+        } else if (sourceType === 'debit') {
+            conditions.push(`(t.transaction_type = 'credit_card' AND cv.is_debit = true)`);
+        } else if (sourceType === 'direct') {
+            conditions.push(`(t.transaction_type = 'bank' AND NOT EXISTS (
+                SELECT 1 FROM transaction_reconciliations tr_src
+                WHERE tr_src.bank_identifier = t.identifier AND tr_src.bank_vendor = t.vendor AND tr_src.status = 'approved'
+            ))`);
         }
 
         // 5. Bank Account specific filters (supporting transactions_by_bank_account logic)

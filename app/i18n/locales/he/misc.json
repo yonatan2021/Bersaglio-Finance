@@ -157,7 +157,9 @@
       "pagi": "בנק פאג\"י"
     },
     "fallbackBank": "חשבון בנק",
-    "creditCard": "כרטיס אשראי"
+    "creditCard": "כרטיס אשראי",
+    "direct": "ישיר",
+    "debit": "דביט"
   },
   "recentTransactions": {
     "title": "עסקאות אחרונות",

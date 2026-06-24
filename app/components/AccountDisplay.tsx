@@ -5,10 +5,6 @@ import { useCardVendors } from './CategoryDashboard/utils/useCardVendors';
 import { useTranslation } from 'react-i18next';
 
 interface AccountDisplayProps {
-    /**
-     * The transaction object containing account details.
-     * Can be a full Transaction, Installment, or RecurringTransaction.
-     */
     transaction: {
         vendor?: string;
         account_number?: string | null;
@@ -16,38 +12,31 @@ interface AccountDisplayProps {
         bank_nickname?: string | null;
         vendor_nickname?: string | null;
         bank_account_display?: string | null;
+        card_type?: 'credit' | 'debit' | 'direct';
+        is_debit?: boolean;
+        is_reconciled?: boolean;
+        cc_vendor_resolved?: string | null;
+        cc_account_number_resolved?: string | null;
     };
-    /**
-     * Optional manual override for vendor if not available in transaction
-     */
     vendorOverride?: string;
-    /**
-     * Show gradient background for the icon (more premium look)
-     * Defaults to false (simple look)
-     */
     premium?: boolean;
 }
 
 const BANK_VENDORS = ['hapoalim', 'leumi', 'mizrahi', 'discount', 'yahav', 'union', 'otsarHahayal', 'beinleumi', 'massad', 'pagi'];
 
-/**
- * A unified component to display account or card information.
- * Handles both Bank accounts and Credit Cards.
- */
 const AccountDisplay: React.FC<AccountDisplayProps & { compact?: boolean }> = React.memo(({ transaction, vendorOverride, premium = false, compact = false }) => {
     const theme = useTheme();
     const { t } = useTranslation('misc');
     const { getCardVendor, getCardNickname } = useCardVendors();
 
-    // Determine if it's a bank account
-    const isBank = transaction.transaction_type === 'bank' ||
-        (transaction.vendor && BANK_VENDORS.includes(transaction.vendor));
+    const cardType = transaction.card_type || (
+        transaction.transaction_type === 'bank' || (transaction.vendor && BANK_VENDORS.includes(transaction.vendor))
+            ? 'direct' : 'credit'
+    );
 
-    if (isBank) {
+    // State 3: Direct bank transaction
+    if (cardType === 'direct') {
         const vendor = transaction.vendor || vendorOverride || 'unknown';
-        const nickname = transaction.vendor_nickname || transaction.bank_nickname;
-        const bankName = nickname || (BANK_VENDORS.includes(vendor) ? t(`accountDisplay.banks.${vendor}`, t('accountDisplay.fallbackBank')) : t('accountDisplay.fallbackBank'));
-        const bankAccount = nickname ? null : (transaction.bank_account_display || transaction.account_number);
 
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -67,7 +56,6 @@ const AccountDisplay: React.FC<AccountDisplayProps & { compact?: boolean }> = Re
                 ) : (
                     <CardVendorIcon vendor={vendor} size={24} />
                 )}
-
                 <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{
                         fontWeight: 700,
@@ -75,27 +63,21 @@ const AccountDisplay: React.FC<AccountDisplayProps & { compact?: boolean }> = Re
                         color: theme.palette.text.primary,
                         whiteSpace: 'nowrap'
                     }}>
-                        {bankName}
+                        {t('accountDisplay.direct', 'ישיר')}
                     </span>
-                    {bankAccount && (
-                        <span style={{
-                            fontSize: compact ? '10px' : '11px',
-                            color: theme.palette.text.secondary,
-                            fontWeight: 500
-                        }}>
-                            {bankAccount}
-                        </span>
-                    )}
                 </Box>
             </Box>
         );
     }
 
-    // It's a credit card (or unknown)
-    if (transaction.account_number) {
-        const last4 = transaction.account_number.slice(-4);
-        const nickname = getCardNickname(transaction.account_number);
-        const vendor = getCardVendor(transaction.account_number) || transaction.vendor || null;
+    // State 1 & 2: Credit card or Debit card
+    const accountNumber = transaction.cc_account_number_resolved || transaction.account_number;
+    const resolvedVendor = transaction.cc_vendor_resolved || transaction.vendor;
+
+    if (accountNumber) {
+        const last4 = accountNumber.slice(-4);
+        const nickname = getCardNickname(accountNumber);
+        const vendor = getCardVendor(accountNumber) || resolvedVendor || null;
 
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -152,18 +134,39 @@ const AccountDisplay: React.FC<AccountDisplayProps & { compact?: boolean }> = Re
                                 {nickname}
                             </span>
                         )}
-                        <span style={{
-                            fontWeight: '500',
-                            color: theme.palette.text.secondary,
-                            backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(148, 163, 184, 0.1)',
-                            padding: compact ? '2px 4px' : '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: compact ? '10px' : '11px',
-                            display: 'inline-block',
-                            width: 'fit-content'
-                        }}>
-                            •••• {last4}
-                        </span>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{
+                                fontWeight: '500',
+                                color: theme.palette.text.secondary,
+                                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(148, 163, 184, 0.1)',
+                                padding: compact ? '2px 4px' : '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: compact ? '10px' : '11px',
+                                display: 'inline-block',
+                                width: 'fit-content'
+                            }}>
+                                •••• {last4}
+                            </span>
+                            {cardType === 'debit' && (
+                                <span style={{
+                                    fontSize: '9px',
+                                    fontWeight: 700,
+                                    color: theme.palette.warning.main,
+                                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(251, 191, 36, 0.1)' : 'rgba(251, 191, 36, 0.15)',
+                                    padding: '1px 4px',
+                                    borderRadius: '4px'
+                                }}>
+                                    {t('accountDisplay.debit', 'דביט')}
+                                </span>
+                            )}
+                            {transaction.is_reconciled && (
+                                <span style={{
+                                    fontSize: '10px',
+                                    color: 'var(--n-success)',
+                                    fontWeight: 700
+                                }}>✓</span>
+                            )}
+                        </Box>
                     </Box>
                 )}
             </Box>
@@ -174,6 +177,5 @@ const AccountDisplay: React.FC<AccountDisplayProps & { compact?: boolean }> = Re
 });
 
 AccountDisplay.displayName = 'AccountDisplay';
-
 
 export default AccountDisplay;

@@ -14,7 +14,29 @@
     "sortByCategory": "קטגוריה",
     "loading": "טוען...",
     "empty": "אין עסקאות.",
-    "fallbackCardLabel": "כרטיס"
+    "fallbackCardLabel": "כרטיס",
+    "columnType": "סוג",
+    "columnBankAccount": "חשבון בנק",
+    "charge": "חיוב",
+    "credit": "זיכוי",
+    "debit": "דביט",
+    "direct": "ישיר",
+    "immediate": "מיידי",
+    "immediateCreditCard": "מיידי (אשראי)",
+    "billingDate": "חיוב {{date}}",
+    "installmentWithBilling": "{{current}}/{{total}} · חיוב {{date}}",
+    "reconciled": "עברה התאמה",
+    "notLinked": "לא מקושר",
+    "linkCardTooltip": "קשר כרטיס לחשבון בנק בהגדרות"
+  },
+  "summary": {
+    "totalCharges": "סה״כ חיובים",
+    "totalCredits": "סה״כ זיכויים",
+    "net": "נטו",
+    "breakdown": "פירוט",
+    "creditCard": "אשראי",
+    "debitCard": "דביט",
+    "directBank": "ישיר מבנק"
   },
   "groupHeader": {
     "today": "היום",

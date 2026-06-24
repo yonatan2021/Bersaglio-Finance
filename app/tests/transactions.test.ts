@@ -76,8 +76,8 @@ describe('Transactions API Endpoint', () => {
             expect(mockClient.query).toHaveBeenCalledTimes(1);
             const [sql, params] = mockClient.query.mock.calls[0];
 
-            // Should NOT have WHERE clause for transaction_type
-            expect(sql).not.toContain('transaction_type =');
+            // Should NOT have parameterized WHERE filter for transaction_type
+            expect(sql).not.toMatch(/t\.transaction_type = \$/);
             expect(sql).toContain('date >= $1::date');
             expect(sql).toContain('date <= $2::date');
             // Default limit 100, offset 0
@@ -124,8 +124,8 @@ describe('Transactions API Endpoint', () => {
             await handler(mockReq, mockRes);
 
             const [sql, params] = mockClient.query.mock.calls[0];
-            // 'all' should result in no WHERE transaction_type clause
-            expect(sql).not.toContain('transaction_type =');
+            // 'all' should result in no parameterized WHERE filter for transaction_type
+            expect(sql).not.toMatch(/t\.transaction_type = \$/);
             expect(params).toEqual(['2023-01-01', '2023-01-31', 100, 0]);
         });
 

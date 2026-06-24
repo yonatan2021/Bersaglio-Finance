@@ -279,11 +279,13 @@ const getTransactions = createApiHandler({
 
         return {
             sql: `
-        SELECT 
+        SELECT
           t.identifier,
           t.vendor,
           t.date,
           COALESCE(cc.name, t.name) as name,
+          COALESCE(cc.name, t.name) as display_name,
+          t.name as original_name,
           t.price,
           COALESCE(cc.category, t.category) as category,
           t.type,
@@ -306,13 +308,35 @@ const getTransactions = createApiHandler({
           tr.cc_identifier as matched_cc_identifier,
           tr.cc_vendor as matched_cc_vendor,
           cc.vendor as cc_vendor_resolved,
-          cc.account_number as cc_account_number_resolved
+          cc.account_number as cc_account_number_resolved,
+          CASE WHEN tr.id IS NOT NULL THEN true ELSE false END as is_reconciled,
+          cv.is_debit,
+          cv.billing_cycle_start_day,
+          CASE
+            WHEN t.transaction_type = 'credit_card' AND cv.is_debit = true THEN 'debit'
+            WHEN t.transaction_type = 'credit_card' THEN 'credit'
+            WHEN t.transaction_type = 'bank' AND tr.id IS NOT NULL THEN
+              CASE WHEN cc_cv.is_debit = true THEN 'debit' ELSE 'credit' END
+            ELSE 'direct'
+          END as card_type,
+          COALESCE(
+            linked_ba.nickname,
+            co.custom_bank_account_nickname,
+            (SELECT bvc.nickname FROM vendor_credentials bvc
+             WHERE bvc.vendor = t.vendor AND bvc.is_active = true LIMIT 1)
+          ) as bank_account_name,
+          bank_tx.date as bank_debit_date
         FROM transactions t
         LEFT JOIN card_ownership co ON t.vendor = co.vendor AND t.account_number = co.account_number
         LEFT JOIN vendor_credentials vc ON co.credential_id = vc.id
+        LEFT JOIN vendor_credentials linked_ba ON co.linked_bank_account_id = linked_ba.id
         LEFT JOIN vendor_credentials ba ON ba.id = ${bankAccountParamIndex ? `$${bankAccountParamIndex}` : 'NULL'}
+        LEFT JOIN card_vendors cv ON RIGHT(t.account_number, 4) = cv.last4_digits AND t.transaction_type = 'credit_card'
         LEFT JOIN transaction_reconciliations tr ON t.identifier = tr.bank_identifier AND t.vendor = tr.bank_vendor AND tr.status = 'approved'
         LEFT JOIN transactions cc ON tr.cc_identifier = cc.identifier AND tr.cc_vendor = cc.vendor
+        LEFT JOIN card_vendors cc_cv ON RIGHT(cc.account_number, 4) = cc_cv.last4_digits
+        LEFT JOIN transaction_reconciliations cc_tr ON t.identifier = cc_tr.cc_identifier AND t.vendor = cc_tr.cc_vendor AND cc_tr.status = 'approved'
+        LEFT JOIN transactions bank_tx ON cc_tr.bank_identifier = bank_tx.identifier AND cc_tr.bank_vendor = bank_tx.vendor
         ${whereClause}
         ORDER BY ${orderByCol} ${sortDir}, t.identifier, t.vendor
         LIMIT ${limitParam}
@@ -357,7 +381,10 @@ const getTransactions = createApiHandler({
         return result.rows.map(row => ({
             ...row,
             card6_digits: row.card6_digits_encrypted ? safeDecrypt(row.card6_digits_encrypted) : null,
-            card6_digits_encrypted: undefined
+            card6_digits_encrypted: undefined,
+            is_reconciled: row.is_reconciled === true || row.is_reconciled === 't',
+            is_debit: row.is_debit === true || row.is_debit === 't',
+            is_credit: row.price > 0
         }));
     }
 });

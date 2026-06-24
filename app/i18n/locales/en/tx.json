@@ -14,7 +14,29 @@
     "sortByCategory": "Category",
     "loading": "Loading...",
     "empty": "No transactions.",
-    "fallbackCardLabel": "Card"
+    "fallbackCardLabel": "Card",
+    "columnType": "Type",
+    "columnBankAccount": "Bank Account",
+    "charge": "Charge",
+    "credit": "Credit",
+    "debit": "Debit",
+    "direct": "Direct",
+    "immediate": "Immediate",
+    "immediateCreditCard": "Immediate (CC)",
+    "billingDate": "Billing {{date}}",
+    "installmentWithBilling": "{{current}}/{{total}} · Billing {{date}}",
+    "reconciled": "Reconciled",
+    "notLinked": "Not linked",
+    "linkCardTooltip": "Link card to bank account in settings"
+  },
+  "summary": {
+    "totalCharges": "Total Charges",
+    "totalCredits": "Total Credits",
+    "net": "Net",
+    "breakdown": "Breakdown",
+    "creditCard": "Credit Card",
+    "debitCard": "Debit",
+    "directBank": "Direct Bank"
   },
   "groupHeader": {
     "today": "Today",

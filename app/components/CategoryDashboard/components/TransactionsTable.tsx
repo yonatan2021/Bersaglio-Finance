@@ -6,6 +6,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlineOutlined';
 import { formatNumber } from '../utils/formatUtils';
 import { dateUtils } from '../utils/dateUtils';
 import { useCategories } from '../utils/useCategories';
@@ -33,8 +35,48 @@ const getCurrencySymbol = (currency?: string) => {
   return currency + ' ';
 };
 
+function getPaymentInfo(transaction: Transaction): { label: string; params?: Record<string, string> } {
+  if (transaction.card_type === 'direct') {
+    return { label: 'dash' };
+  }
+  if (transaction.is_debit) {
+    return { label: 'immediate' };
+  }
+  if (transaction.card_type === 'credit' && transaction.bank_debit_date) {
+    const txDate = new Date(transaction.date);
+    const bankDate = new Date(transaction.bank_debit_date);
+    const daysDiff = Math.abs(txDate.getTime() - bankDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysDiff <= 3) {
+      return { label: 'immediateCreditCard' };
+    }
+  }
+  const billingDay = transaction.billing_cycle_start_day || 10;
+  const txDate = new Date(transaction.date);
+  const txDay = txDate.getDate();
+  let billingMonth: Date;
+  if (txDay >= billingDay) {
+    billingMonth = new Date(txDate.getFullYear(), txDate.getMonth() + 1, billingDay);
+  } else {
+    billingMonth = new Date(txDate.getFullYear(), txDate.getMonth(), billingDay);
+  }
+  const billingDateStr = `${billingMonth.getDate().toString().padStart(2, '0')}/${(billingMonth.getMonth() + 1).toString().padStart(2, '0')}`;
+  if (transaction.installments_total && transaction.installments_total > 1) {
+    return {
+      label: 'installmentWithBilling',
+      params: {
+        current: String(transaction.installments_number || 1),
+        total: String(transaction.installments_total),
+        date: billingDateStr
+      }
+    };
+  }
+  return { label: 'billingDate', params: { date: billingDateStr } };
+}
+
 export interface Transaction {
   name: string;
+  display_name?: string;
+  original_name?: string;
   price: number;
   date: string;
   category: string;
@@ -50,6 +92,16 @@ export interface Transaction {
   processed_date?: string;
   is_favorite?: boolean;
   notes?: string;
+  transaction_type?: string;
+  is_reconciled?: boolean;
+  card_type?: 'credit' | 'debit' | 'direct';
+  is_debit?: boolean;
+  bank_account_name?: string;
+  billing_cycle_start_day?: number;
+  bank_debit_date?: string;
+  is_credit?: boolean;
+  cc_vendor_resolved?: string;
+  cc_account_number_resolved?: string;
 }
 
 export interface TransactionsTableProps {
@@ -242,7 +294,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><Typography>{t('tx:table.loading')}</Typography></Box>;
   if (!transactions || transactions.length === 0) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><Typography>{t('tx:table.empty')}</Typography></Box>;
 
-  const columnWidths = { description: '35%', category: '15%', amount: '12%', installment: '8%', card: '12%', date: '10%', actions: '8%' };
+  const columnWidths = { description: '24%', type: '5%', category: '12%', amount: '10%', installment: '10%', card: '12%', bankAccount: '11%', date: '8%', actions: '8%' };
   const tableHeaderBaseStyle = getTableHeaderCellStyle(theme);
 
   const renderSortableHeader = (label: string, field: string, align: 'left' | 'right' = 'left', width?: string) => {
@@ -260,6 +312,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
   const content = (
     <Box sx={{ width: '100%' }}>
+      {transactions.length > 0 && <TransactionsSummaryBar transactions={transactions} />}
       {isMobile ? (
         <MobileSortableTable
           sortOptions={mobileSortOptions}
@@ -298,10 +351,12 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
           <TableHead>
             <TableRow>
               {renderSortableHeader(t('tx:table.columnDescription'), 'name', 'left', columnWidths.description)}
+              <TableCell style={{ ...tableHeaderBaseStyle, width: columnWidths.type }}>{t('tx:table.columnType')}</TableCell>
               {renderSortableHeader(t('tx:table.columnCategory'), 'category', 'left', columnWidths.category)}
               {renderSortableHeader(t('tx:table.columnAmount'), 'price', 'right', columnWidths.amount)}
               {!hideInstallmentsColumn && <TableCell style={{ ...tableHeaderBaseStyle, width: columnWidths.installment }}>{t('tx:table.columnInstallments')}</TableCell>}
               {renderSortableHeader(t('tx:table.columnCard'), 'account_number', 'left', columnWidths.card)}
+              <TableCell style={{ ...tableHeaderBaseStyle, width: columnWidths.bankAccount }}>{t('tx:table.columnBankAccount')}</TableCell>
               {!groupByDate && renderSortableHeader(t('tx:table.columnDate'), 'date', 'left', columnWidths.date)}
               {!hideActions && <TableCell align="right" style={{ ...tableHeaderBaseStyle, width: columnWidths.actions }}>{t('tx:table.columnActions')}</TableCell>}
             </TableRow>
@@ -310,7 +365,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
             {groupByDate ? sortedDates.map(date => (
               <React.Fragment key={date}>
                 <TableRow sx={{ background: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 1)' : '#f8fafc', position: 'sticky', top: 53, zIndex: 9 }}>
-                  <TableCell colSpan={7} sx={{ fontWeight: 700, p: 1 }}>{formatDateHeader(date)}</TableCell>
+                  <TableCell colSpan={9} sx={{ fontWeight: 700, p: 1 }}>{formatDateHeader(date)}</TableCell>
                 </TableRow>
                 {groupedTransactions[date].map((t, i) => (
                   <TransactionRow
@@ -481,18 +536,15 @@ const TransactionRow = React.memo(({
           </Tooltip>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>{transaction.name}</Typography>
+            {transaction.is_reconciled && transaction.original_name && transaction.original_name !== transaction.name && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'block', mt: 0.25 }} noWrap>
+                {transaction.original_name}
+              </Typography>
+            )}
             {transaction.notes && (
               <Typography
                 variant="caption"
-                sx={{
-                  color: 'text.secondary',
-                  fontStyle: 'italic',
-                  fontSize: '0.7rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 0.5,
-                  mt: 0.25
-                }}
+                sx={{ color: 'text.secondary', fontStyle: 'italic', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.25 }}
                 noWrap
               >
                 <NotesIcon sx={{ fontSize: '0.75rem', opacity: 0.7 }} />
@@ -502,6 +554,17 @@ const TransactionRow = React.memo(({
           </Box>
         </Box>
       </TableCell>
+      <TableCell style={{ ...cellStyle, textAlign: 'center' }}>
+        <Tooltip title={transaction.is_credit ? t('tx:table.credit') : t('tx:table.charge')}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {transaction.is_credit ? (
+              <AddCircleOutlineIcon sx={{ fontSize: '1rem', color: 'var(--n-success)' }} />
+            ) : (
+              <RemoveCircleOutlineIcon sx={{ fontSize: '1rem', color: 'var(--n-error)' }} />
+            )}
+          </Box>
+        </Tooltip>
+      </TableCell>
       <TableCell style={cellStyle}>
         {editingTransaction?.identifier === transaction.identifier && !hideActions ? (
           <CategoryAutocomplete value={editCategory} onChange={setEditCategory} options={availableCategories} applyToAll={applyToAll} onApplyToAllChange={setApplyToAll} showApplyToAll={editCategory !== editingTransaction.category} />
@@ -509,14 +572,14 @@ const TransactionRow = React.memo(({
       </TableCell>
       <TableCell align="right" style={{
         ...cellStyle,
-        color: transaction.price < 0 ? 'var(--n-error)' : 'var(--n-success)',
+        color: transaction.is_credit ? 'var(--n-success)' : 'var(--n-error)',
         fontWeight: 600
       }}>
         {editingTransaction?.identifier === transaction.identifier && !hideActions ? (
           <TextField value={editPrice} onChange={(e) => setEditPrice(e.target.value)} size="small" type="number" sx={{ width: '80px' }} />
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span>{isBankView && transaction.price >= 0 ? '+' : ''}₪{formatNumber(Math.abs(transaction.price))}</span>
+            <span>₪{formatNumber(Math.abs(transaction.price))}</span>
             {transaction.original_currency && !['ILS', '₪', 'NIS'].includes(transaction.original_currency) && transaction.original_amount && (
               <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
                 ({getCurrencySymbol(transaction.original_currency)}{formatNumber(Math.abs(transaction.original_amount))})
@@ -527,11 +590,30 @@ const TransactionRow = React.memo(({
       </TableCell>
       {!hideInstallmentsColumn && (
         <TableCell align="center" style={cellStyle}>
-          {transaction.installments_total && transaction.installments_total > 1 ? `${transaction.installments_number}/${transaction.installments_total}` : '—'}
+          {(() => {
+            const info = getPaymentInfo(transaction);
+            if (info.label === 'dash') return '—';
+            if (info.label === 'immediate') return t('tx:table.immediate');
+            if (info.label === 'immediateCreditCard') return t('tx:table.immediateCreditCard');
+            return t(`tx:table.${info.label}`, info.params || {});
+          })()}
         </TableCell>
       )}
       <TableCell style={cellStyle}>
         <AccountDisplay transaction={transaction} compact={isWidget} />
+      </TableCell>
+      <TableCell style={cellStyle}>
+        {transaction.bank_account_name ? (
+          <Typography variant="body2" sx={{ fontSize: isWidget ? '11px' : '13px', fontWeight: 600 }}>
+            {transaction.bank_account_name}
+          </Typography>
+        ) : (
+          <Tooltip title={t('tx:table.linkCardTooltip')}>
+            <Typography variant="body2" sx={{ color: 'text.disabled', fontSize: isWidget ? '11px' : '13px' }}>
+              {t('tx:table.notLinked')}
+            </Typography>
+          </Tooltip>
+        )}
       </TableCell>
       {!groupByDate && (
         <TableCell style={cellStyle}>
@@ -649,6 +731,11 @@ const TransactionMobileCardContent = ({
           </IconButton>
           <Box sx={{ ml: 1, minWidth: 0 }}>
             <Typography variant="subtitle2" noWrap sx={{ fontWeight: 700 }}>{transaction.name}</Typography>
+            {transaction.is_reconciled && transaction.original_name && transaction.original_name !== transaction.name && (
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.6rem', display: 'block' }} noWrap>
+                {transaction.original_name}
+              </Typography>
+            )}
             {showDate && <Typography
               variant="caption"
               sx={{
@@ -664,8 +751,8 @@ const TransactionMobileCardContent = ({
               }}>{transaction.notes}</Typography>}
           </Box>
         </Box>
-        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: transaction.price < 0 ? 'var(--n-error)' : 'var(--n-success)' }}>
-          {isBankView && transaction.price >= 0 ? '+' : ''}₪{formatNumber(Math.abs(transaction.price))}
+        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: transaction.is_credit ? 'var(--n-success)' : 'var(--n-error)' }}>
+          ₪{formatNumber(Math.abs(transaction.price))}
         </Typography>
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -674,9 +761,13 @@ const TransactionMobileCardContent = ({
         ) : <Typography variant="caption" sx={{ color: 'var(--n-info)', background: 'rgba(59, 130, 246, 0.1)', p: '2px 8px', borderRadius: 1 }}>{transaction.category}</Typography>}
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <CardVendorIcon vendor={getCardVendor(transaction.account_number)} size={16} />
-          <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>{getCardNickname(transaction.account_number) || t('tx:table.fallbackCardLabel')}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+          <AccountDisplay transaction={transaction} compact />
+          {transaction.bank_account_name && (
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '10px' }}>
+              → {transaction.bank_account_name}
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 0.5 }}>
           {isEditing ? (
@@ -716,4 +807,72 @@ const TransactionMobileCardContent = ({
   );
 };
 
+interface TransactionsSummaryBarProps {
+  transactions: Transaction[];
+}
+
+const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transactions }) => {
+  const { t } = useTranslation('tx');
+  const theme = useTheme();
+
+  const stats = React.useMemo(() => {
+    let totalCharges = 0;
+    let totalCredits = 0;
+    let creditCardTotal = 0;
+    let debitTotal = 0;
+    let directTotal = 0;
+
+    transactions.forEach(tx => {
+      const amount = Math.abs(tx.price);
+      if (tx.is_credit) {
+        totalCredits += amount;
+      } else {
+        totalCharges += amount;
+        if (tx.card_type === 'debit') debitTotal += amount;
+        else if (tx.card_type === 'direct') directTotal += amount;
+        else creditCardTotal += amount;
+      }
+    });
+
+    return { totalCharges, totalCredits, net: totalCharges - totalCredits, creditCardTotal, debitTotal, directTotal };
+  }, [transactions]);
+
+  return (
+    <Box sx={{
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: 2,
+      p: 2,
+      mb: 2,
+      borderRadius: '12px',
+      background: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(241, 245, 249, 0.8)',
+      border: `1px solid ${theme.palette.divider}`
+    }}>
+      <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', flex: 1 }}>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.totalCharges')}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--n-error)' }}>₪{formatNumber(stats.totalCharges)}</Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.totalCredits')}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--n-success)' }}>₪{formatNumber(stats.totalCredits)}</Typography>
+        </Box>
+        <Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.net')}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>₪{formatNumber(stats.net)}</Typography>
+        </Box>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.breakdown')}:</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('summary.creditCard')} ₪{formatNumber(stats.creditCardTotal)}</Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>·</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('summary.debitCard')} ₪{formatNumber(stats.debitTotal)}</Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>·</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('summary.directBank')} ₪{formatNumber(stats.directTotal)}</Typography>
+      </Box>
+    </Box>
+  );
+};
+
+export { TransactionsSummaryBar };
 export default TransactionsTable;

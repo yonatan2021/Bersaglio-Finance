@@ -157,7 +157,9 @@
       "pagi": "Bank Pagi"
     },
     "fallbackBank": "Bank Account",
-    "creditCard": "Credit Card"
+    "creditCard": "Credit Card",
+    "direct": "Direct",
+    "debit": "Debit"
   },
   "recentTransactions": {
     "title": "Recent Transactions",

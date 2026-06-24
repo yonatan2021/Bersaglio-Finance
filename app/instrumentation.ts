@@ -363,6 +363,18 @@ export async function register() {
       logger.error({ error: err.message }, '[startup] Failed to check vault initialization status');
     }
 
+    // Initialize Telegram interactive bot (long-polling)
+    try {
+      logger.info('[startup] Initializing Telegram bot');
+      const { startBot } = await import('./utils/telegram-bot/bot');
+      startBot().catch((err: Error) => {
+        logger.warn({ error: err.message }, '[startup] Telegram bot startup failed (non-fatal)');
+      });
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.warn({ error: err.message }, '[startup] Failed to import Telegram bot module');
+    }
+
     // Fire-and-forget WhatsApp message: "the app just started and the vault is
     // waiting to be unlocked." Lets the user know their server came back up
     // (deploy, NAS reboot, OOM) without having to actively check.

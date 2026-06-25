@@ -1,7 +1,7 @@
 import type { Bot } from 'grammy';
 import type { BotContext, CategorySpending } from '../types';
 import { cached } from '../cache';
-import { escapeMarkdownV2, formatCurrency, progressBar, statusIndicator } from '../formatters';
+import { formatCurrency, progressBar, statusIndicator, sectionSeparator } from '../formatters';
 import { t } from '../i18n';
 import logger from '../../logger.js';
 
@@ -101,8 +101,9 @@ export function buildStatusMessage(data: StatusData): string {
     const { bankIncome, bankExpenses, cardExpenses, totalBudget, totalActual, categories, daysPassed, totalDays } = data;
     const totalExpenses = bankExpenses + cardExpenses;
     const net = bankIncome - totalExpenses;
-    const netSign = net >= 0 ? '\\+' : '\\-';
+    const netSign = net >= 0 ? '+' : '-';
     const netEmoji = net >= 0 ? '✅' : '⚠️';
+    const sep = sectionSeparator();
 
     const budgetPercent = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
     const burnRate = totalActual / Math.max(1, daysPassed);
@@ -112,31 +113,35 @@ export function buildStatusMessage(data: StatusData): string {
 
     const top3 = categories.slice(0, 3);
     const top3Lines = top3.map((c, i) => {
-        const idx = escapeMarkdownV2(String(i + 1));
-        const cat = escapeMarkdownV2(c.category);
-        const spent = escapeMarkdownV2(formatCurrency(c.actual));
-        const limit = escapeMarkdownV2(formatCurrency(c.budget));
-        const pct = escapeMarkdownV2(String(c.percentUsed));
-        return `  ${idx}\\. ${cat} — ${spent}/${limit} \\(${pct}%\\) ${statusIndicator(c.percentUsed)}`;
+        return `   ${i + 1}. ${c.category} — ${formatCurrency(c.actual)}/${formatCurrency(c.budget)} (${c.percentUsed}%) ${statusIndicator(c.percentUsed)}`;
     }).join('\n');
 
     const lines = [
         t.statusTitle,
         '',
-        t.cashflowTitle,
-        `  הכנסות: ${escapeMarkdownV2(formatCurrency(bankIncome))}`,
-        `  הוצאות: ${escapeMarkdownV2(formatCurrency(totalExpenses))}`,
-        `  נטו: ${netSign}${escapeMarkdownV2(formatCurrency(Math.abs(net)))} ${netEmoji}`,
+        sep,
         '',
-        t.budgetTitle,
-        `  ${progressBar(budgetPercent)} ${escapeMarkdownV2(String(budgetPercent))}% \\(${escapeMarkdownV2(formatCurrency(totalActual))}/${escapeMarkdownV2(formatCurrency(totalBudget))}\\)`,
-        `  נותרו ${escapeMarkdownV2(String(daysLeft))} ימים \\| קצב: ${escapeMarkdownV2(formatCurrency(Math.round(burnRate)))}/יום`,
+        `${t.cashflowTitle}`,
+        `   הכנסות:  ${formatCurrency(bankIncome)}`,
+        `   הוצאות:  ${formatCurrency(totalExpenses)}`,
+        `   נטו:  ${netSign}${formatCurrency(Math.abs(net))} ${netEmoji}`,
         '',
-        t.topCategoriesTitle,
-        top3Lines || '  אין נתונים',
+        sep,
         '',
-        t.burndownTitle,
-        `  ${escapeMarkdownV2(burnStatus)}`,
+        `${t.budgetTitle}`,
+        `   ${progressBar(budgetPercent)} ${budgetPercent}%`,
+        `   ${formatCurrency(totalActual)} / ${formatCurrency(totalBudget)}`,
+        `   נותרו ${daysLeft} ימים · קצב: ${formatCurrency(Math.round(burnRate))}/יום`,
+        '',
+        sep,
+        '',
+        `${t.topCategoriesTitle}`,
+        top3Lines || '   אין נתונים',
+        '',
+        sep,
+        '',
+        `${t.burndownTitle}`,
+        `   ${burnStatus}`,
     ];
 
     return lines.join('\n');
@@ -147,10 +152,10 @@ export function registerStatusHandler(bot: Bot<BotContext>, getDB: () => Promise
         try {
             const data = await cached('status:data', BUDGET_CACHE_TTL, () => fetchStatusData(getDB));
             const message = buildStatusMessage(data);
-            await ctx.reply(message, { parse_mode: 'MarkdownV2' });
+            await ctx.reply(message, { parse_mode: undefined });
         } catch (err: any) {
             logger.error({ err: err.message }, '[telegram-bot] /status failed');
-            await ctx.reply(t.errorGeneric);
+            await ctx.reply(t.errorGeneric, { parse_mode: undefined });
         }
     };
 

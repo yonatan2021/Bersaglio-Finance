@@ -8,6 +8,11 @@
     "mappings": "Mappings",
     "uncategorized": "Uncategorized"
   },
+  "categoryType": {
+    "expense": "Expense",
+    "income": "Income",
+    "transfer": "Transfer"
+  },
   "categories": {
     "selectedToMerge": "Selected to Merge ({{count}})",
     "clickToSelect": "Click categories below to select",

@@ -21,7 +21,9 @@ import {
   Card,
   CardContent,
   Grid,
-  useTheme
+  useTheme,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import MergeIcon from '@mui/icons-material/Merge';
@@ -54,6 +56,7 @@ import { useLocale } from '../../../context/LocaleContext';
 interface Category {
   name: string;
   count: number;
+  type?: string;
 }
 
 interface CategorizationRule {
@@ -132,6 +135,10 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
   const { t } = useTranslation(['categoryMgmt', 'common']);
   const { locale } = useLocale();
   const dateLocale = locale === 'he' ? 'he-IL' : 'en-US';
+
+  // Category type menu state
+  const [typeMenuAnchor, setTypeMenuAnchor] = useState<null | HTMLElement>(null);
+  const [typeMenuCategory, setTypeMenuCategory] = useState<string | null>(null);
 
   // Quick Categorize state
   const [uncategorizedDescriptions, setUncategorizedDescriptions] = useState<UncategorizedDescription[]>([]);
@@ -438,6 +445,52 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
       setError(error instanceof Error ? error.message : t('categoryMgmt:errors.failedToCreateMapping'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTypeChipClick = (event: React.MouseEvent<HTMLElement>, categoryName: string) => {
+    event.stopPropagation();
+    setTypeMenuAnchor(event.currentTarget);
+    setTypeMenuCategory(categoryName);
+  };
+
+  const handleTypeChange = async (newType: string) => {
+    if (!typeMenuCategory) return;
+    const oldCategories = [...categories];
+    // Optimistic update
+    setCategories(prev =>
+      prev.map(c => c.name === typeMenuCategory ? { ...c, type: newType } : c)
+    );
+    setTypeMenuAnchor(null);
+    setTypeMenuCategory(null);
+    try {
+      const response = await fetch('/api/categories/types', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categories: [{ category: typeMenuCategory, type: newType }] })
+      });
+      if (!response.ok) throw new Error('Failed to update category type');
+      if (onCategoriesUpdated) onCategoriesUpdated();
+    } catch (err) {
+      logger.error('Error updating category type', err);
+      setCategories(oldCategories);
+      setError(t('categoryMgmt:errors.failedToUpdateCategory'));
+    }
+  };
+
+  const getCategoryTypeLabel = (type?: string): string => {
+    switch (type) {
+      case 'income': return t('categoryMgmt:categoryType.income');
+      case 'transfer': return t('categoryMgmt:categoryType.transfer');
+      default: return t('categoryMgmt:categoryType.expense');
+    }
+  };
+
+  const getCategoryTypeColor = (type?: string): string => {
+    switch (type) {
+      case 'income': return 'var(--n-success, #4caf50)';
+      case 'transfer': return 'var(--n-primary, #2196f3)';
+      default: return theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';
     }
   };
 
@@ -1114,11 +1167,33 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
                               sx={{
                                 fontWeight: 500,
                                 fontSize: '0.8rem',
-                                lineHeight: 1.2
+                                lineHeight: 1.2,
+                                flex: 1,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               {category.name}
                             </Typography>
+                            <Chip
+                              label={getCategoryTypeLabel(category.type)}
+                              size="small"
+                              onClick={(e) => handleTypeChipClick(e, category.name)}
+                              sx={{
+                                height: 18,
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                borderRadius: '4px',
+                                flexShrink: 0,
+                                backgroundColor: getCategoryTypeColor(category.type),
+                                color: category.type === 'income' || category.type === 'transfer' ? '#fff' : theme.palette.text.secondary,
+                                cursor: 'pointer',
+                                '& .MuiChip-label': { px: 0.75 },
+                                '&:hover': { opacity: 0.85 }
+                              }}
+                            />
                           </Box>
                         </CardContent>
                       </Card>
@@ -1128,6 +1203,34 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
             </Box>
           </>
         )}
+
+        {/* Category type selection menu */}
+        <Menu
+          anchorEl={typeMenuAnchor}
+          open={Boolean(typeMenuAnchor)}
+          onClose={() => { setTypeMenuAnchor(null); setTypeMenuCategory(null); }}
+          slotProps={{ paper: { sx: { minWidth: 120, borderRadius: '8px' } } }}
+        >
+          {(['expense', 'income', 'transfer'] as const).map((type) => (
+            <MenuItem
+              key={type}
+              selected={typeMenuCategory ? categories.find(c => c.name === typeMenuCategory)?.type === type || (type === 'expense' && !categories.find(c => c.name === typeMenuCategory)?.type) : false}
+              onClick={() => handleTypeChange(type)}
+              sx={{ fontSize: '0.85rem', gap: 1 }}
+            >
+              <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '2px',
+                  backgroundColor: getCategoryTypeColor(type),
+                  flexShrink: 0
+                }}
+              />
+              {getCategoryTypeLabel(type)}
+            </MenuItem>
+          ))}
+        </Menu>
 
         {currentTab === 1 && (
           <>

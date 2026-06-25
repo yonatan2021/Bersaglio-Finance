@@ -8,6 +8,11 @@
     "mappings": "מיפויים",
     "uncategorized": "ללא קטגוריה"
   },
+  "categoryType": {
+    "expense": "הוצאה",
+    "income": "הכנסה",
+    "transfer": "העברה"
+  },
   "categories": {
     "selectedToMerge": "נבחרו לאיחוד ({{count}})",
     "clickToSelect": "לחצו על קטגוריות בהמשך לבחירתן",

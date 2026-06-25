@@ -7,6 +7,8 @@ import { registerExpenseHandler, handleExpenseFlowMessage } from './handlers/exp
 import { registerSummaryHandler } from './handlers/summary';
 import { registerTriageHandler } from './handlers/triage';
 import { registerSyncHandler } from './handlers/sync';
+import { registerSettingsHandler } from './handlers/settings';
+import { handleAIFallback } from './handlers/ai';
 import { mainMenuKeyboard } from './keyboards';
 import { t } from './i18n';
 import logger from '../logger.js';
@@ -36,8 +38,9 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
     registerSummaryHandler(bot);
     registerTriageHandler(bot, getDB);
     registerSyncHandler(bot);
+    registerSettingsHandler(bot, getDB);
 
-    // Message handler: guided flows first, then AI fallback (Task 7)
+    // Message handler: guided flows first, then AI fallback
     bot.on('message:text', async (ctx) => {
         // Check guided expense flow
         const handled = await handleExpenseFlowMessage(ctx, getDB);
@@ -47,10 +50,10 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
         if (ctx.session?.conversation?.type === 'search_filter' && ctx.session.conversation.step === 'awaiting_query') {
             const query = ctx.message.text.trim();
             ctx.session.conversation = undefined;
-            // Search flow delegated to transactions handler — will be wired in future task
         }
 
-        // AI fallback will be registered in Task 7
+        // AI fallback for unrecognized text
+        await handleAIFallback(ctx, getDB);
     });
 
     bot.catch((err) => {

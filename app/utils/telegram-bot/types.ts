@@ -1,4 +1,6 @@
 import { Context, SessionFlavor } from 'grammy';
+import { HydrateFlavor } from '@grammyjs/hydrate';
+import { ParseModeFlavor } from '@grammyjs/parse-mode';
 
 export interface BotSession {
     conversation?: {
@@ -13,7 +15,7 @@ export interface BotSession {
     };
 }
 
-export type BotContext = Context & SessionFlavor<BotSession>;
+export type BotContext = HydrateFlavor<ParseModeFlavor<Context & SessionFlavor<BotSession>>>;
 
 export interface TransactionRow {
     id: number;

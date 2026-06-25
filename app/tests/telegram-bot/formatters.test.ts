@@ -1,19 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { escapeMarkdownV2, formatCurrency, formatDate, progressBar, formatTransaction, statusIndicator } from '../../utils/telegram-bot/formatters';
-
-describe('escapeMarkdownV2', () => {
-    it('escapes all MarkdownV2 special characters', () => {
-        expect(escapeMarkdownV2('hello_world')).toBe('hello\\_world');
-        expect(escapeMarkdownV2('price: 100.5')).toBe('price: 100\\.5');
-        expect(escapeMarkdownV2('(test)')).toBe('\\(test\\)');
-        expect(escapeMarkdownV2('a+b=c')).toBe('a\\+b\\=c');
-    });
-
-    it('returns plain text unchanged', () => {
-        expect(escapeMarkdownV2('hello')).toBe('hello');
-        expect(escapeMarkdownV2('שלום')).toBe('שלום');
-    });
-});
+import {
+    formatCurrency,
+    formatDate,
+    progressBar,
+    statusIndicator,
+    formatTransactionCard,
+    sectionSeparator,
+    thinSeparator,
+} from '../../utils/telegram-bot/formatters';
 
 describe('formatCurrency', () => {
     it('formats positive numbers with ₪ prefix', () => {
@@ -71,27 +65,37 @@ describe('statusIndicator', () => {
     });
 });
 
-describe('formatTransaction', () => {
-    it('formats a full transaction row', () => {
-        const result = formatTransaction({
-            date: '2026-06-15',
+describe('formatTransactionCard', () => {
+    it('includes name, amount, date, and category', () => {
+        const result = formatTransactionCard({
             name: 'Coffee Shop',
             price: -25,
+            date: '2026-06-15',
             category: 'אוכל',
         });
-        expect(result).toContain('15/06');
         expect(result).toContain('Coffee Shop');
         expect(result).toContain('₪25');
+        expect(result).toContain('15/06');
         expect(result).toContain('אוכל');
     });
 
     it('shows fallback for null category', () => {
-        const result = formatTransaction({
-            date: '2026-06-15',
+        const result = formatTransactionCard({
             name: 'Unknown',
             price: -10,
+            date: '2026-06-15',
             category: null,
         });
         expect(result).toContain('ללא קטגוריה');
+    });
+});
+
+describe('separators', () => {
+    it('sectionSeparator returns thick line', () => {
+        expect(sectionSeparator()).toBe('━━━━━━━━━━━━━━━━');
+    });
+
+    it('thinSeparator returns dotted line', () => {
+        expect(thinSeparator()).toBe('┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄');
     });
 });

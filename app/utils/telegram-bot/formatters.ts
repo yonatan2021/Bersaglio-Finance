@@ -1,9 +1,3 @@
-const MD2_SPECIAL = /[_*[\]()~`>#+\-=|{}.!\\]/g;
-
-export function escapeMarkdownV2(text: string): string {
-    return String(text).replace(MD2_SPECIAL, '\\$&');
-}
-
 export function formatCurrency(amount: number): string {
     const abs = Math.abs(amount);
     const formatted = abs.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -23,16 +17,23 @@ export function progressBar(percent: number, width = 10): string {
     return '▓'.repeat(filled) + '░'.repeat(width - filled);
 }
 
-export function formatTransaction(txn: { date: string; name: string; price: number; category: string | null }): string {
-    const date = escapeMarkdownV2(formatDate(txn.date));
-    const name = escapeMarkdownV2(txn.name);
-    const amount = escapeMarkdownV2(formatCurrency(Math.abs(txn.price)));
-    const cat = escapeMarkdownV2(txn.category || 'ללא קטגוריה');
-    return `${date} \\| ${name} \\| ${amount} \\| ${cat}`;
-}
-
 export function statusIndicator(percentUsed: number): string {
     if (percentUsed > 100) return '⚠️';
     if (percentUsed > 80) return '🟡';
     return '✅';
+}
+
+export function sectionSeparator(): string {
+    return '━━━━━━━━━━━━━━━━';
+}
+
+export function thinSeparator(): string {
+    return '┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄';
+}
+
+export function formatTransactionCard(txn: { name: string; price: number; date: string; category: string | null }): string {
+    const amount = formatCurrency(Math.abs(txn.price));
+    const date = formatDate(txn.date);
+    const cat = txn.category || 'ללא קטגוריה';
+    return `📝 ${txn.name}\n💰 ${amount}  ·  📅 ${date}\n🏷 ${cat}`;
 }

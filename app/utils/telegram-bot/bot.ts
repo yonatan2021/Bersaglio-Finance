@@ -45,7 +45,7 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
         initial: (): BotSession => ({}),
     }));
     bot.use(hydrate());
-    bot.api.config.use(autoChatAction());
+    bot.use(autoChatAction(bot.api) as any);
     bot.use(authMiddleware(getDB));
     bot.use(limit({
         timeFrame: 60,

@@ -49,7 +49,7 @@ export async function fetchStatusData(getDB: () => Promise<any>): Promise<Status
             client.query('SELECT budget_limit FROM total_budget LIMIT 1'),
         ]);
 
-        const summary = summaryRes.rows[0];
+        const summary = summaryRes.rows[0] ?? { bank_income: '0', bank_expenses: '0', card_expenses: '0' };
         const budgetMap = new Map<string, number>();
         for (const row of budgetRes.rows) {
             budgetMap.set(row.category, parseFloat(row.budget_limit) || 0);
@@ -107,7 +107,7 @@ export function buildStatusMessage(data: StatusData): string {
     const budgetPercent = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
     const burnRate = totalActual / Math.max(1, daysPassed);
     const budgetRate = totalBudget > 0 ? totalBudget / totalDays : 0;
-    const burnStatus = budgetRate > 0 && burnRate <= budgetRate ? 'מצוין ✅' : 'חריגה צפויה ⚠️';
+    const burnStatus = budgetRate > 0 && burnRate <= budgetRate ? t.burndownGood : t.burndownBehind;
     const daysLeft = totalDays - daysPassed;
 
     const top3 = categories.slice(0, 3);

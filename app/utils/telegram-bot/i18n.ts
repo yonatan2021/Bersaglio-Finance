@@ -14,6 +14,8 @@ export const t = {
     budgetTitle: '📉 *ניצול תקציב:*',
     topCategoriesTitle: '🏆 *טופ 3 קטגוריות:*',
     burndownTitle: '🔥 *בורנדאון:*',
+    burndownGood: 'מצוין ✅',
+    burndownBehind: 'חריגה צפויה ⚠️',
 
     recentTitle: '💳 *עסקאות אחרונות*',
     recentEmpty: 'לא נמצאו עסקאות לתקופה זו\\.',

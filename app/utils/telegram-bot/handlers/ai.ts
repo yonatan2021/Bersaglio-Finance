@@ -57,7 +57,7 @@ export async function handleAIFallback(ctx: BotContext, getDB: () => Promise<any
     const userText = ctx.message?.text?.trim();
     if (!userText) return;
 
-    await ctx.reply(t.aiThinking, { parse_mode: 'MarkdownV2' });
+    await ctx.reply(t.aiThinking, { parse_mode: undefined });
 
     try {
         const context = await buildFinancialContext(getDB);
@@ -76,14 +76,16 @@ ${context}
             maxTokens: 2000,
         });
 
-        await ctx.reply(text);
+        await ctx.reply(text, {
+            parse_mode: undefined,
+            link_preview_options: { is_disabled: true },
+        });
     } catch (err: any) {
         logger.error({ err: err.message }, '[telegram-bot] AI fallback failed');
-        await ctx.reply(t.aiFallbackError, { parse_mode: 'MarkdownV2' });
+        await ctx.reply(t.aiFallbackError, { parse_mode: undefined });
     }
 }
 
 export function registerAIHandler(_bot: Bot<BotContext>, _getDB: () => Promise<any>): void {
-    // AI fallback is not a command — it's called from the catch-all
-    // message:text handler in bot.ts via handleAIFallback()
+    // AI fallback is not a command — called from catch-all message:text handler
 }

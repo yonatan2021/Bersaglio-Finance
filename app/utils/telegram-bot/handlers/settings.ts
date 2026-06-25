@@ -2,7 +2,7 @@ import type { Bot } from 'grammy';
 import { InlineKeyboard } from 'grammy';
 import type { BotContext } from '../types';
 import { bustCache } from '../cache';
-import { escapeMarkdownV2 } from '../formatters';
+import { sectionSeparator } from '../formatters';
 import { t } from '../i18n';
 import logger from '../../logger.js';
 
@@ -26,25 +26,28 @@ export function registerSettingsHandler(bot: Bot<BotContext>, getDB: () => Promi
                 client.release();
             }
 
-            const modelDisplay = escapeMarkdownV2(config.model || 'לא מוגדר');
-            const baseUrlDisplay = escapeMarkdownV2(config.baseURL || 'לא מוגדר');
-            const modeDisplay = escapeMarkdownV2(summaryMode === 'cycle' ? 'מחזור חיוב' : 'חודש קלנדרי');
+            const modelDisplay = config.model || 'לא מוגדר';
+            const baseUrlDisplay = config.baseURL || 'לא מוגדר';
+            const modeDisplay = summaryMode === 'cycle' ? 'מחזור חיוב' : 'חודש קלנדרי';
+            const sep = sectionSeparator();
 
             const text = [
                 t.settingsTitle,
                 '',
-                `🤖 *${escapeMarkdownV2('מודל AI')}:* ${modelDisplay}`,
-                `🌐 *${escapeMarkdownV2('כתובת API')}:* ${baseUrlDisplay}`,
-                `📅 *${escapeMarkdownV2('מצב סיכום')}:* ${modeDisplay}`,
+                sep,
+                '',
+                `🤖 מודל AI: ${modelDisplay}`,
+                `🌐 כתובת API: ${baseUrlDisplay}`,
+                `📅 מצב סיכום: ${modeDisplay}`,
             ].join('\n');
 
             const kb = new InlineKeyboard()
                 .text('🔄 החלף מצב סיכום', 'set:toggle_summary_mode');
 
-            await ctx.reply(text, { parse_mode: 'MarkdownV2', reply_markup: kb });
+            await ctx.reply(text, { parse_mode: undefined, reply_markup: kb });
         } catch (err: any) {
             logger.error({ err: err.message }, '[telegram-bot] /settings failed');
-            await ctx.reply(t.errorGeneric);
+            await ctx.reply(t.errorGeneric, { parse_mode: undefined });
         }
     };
 

@@ -33,8 +33,8 @@ describe('summary handler', () => {
         await handler(ctx);
 
         expect(replyFn).toHaveBeenCalledTimes(2);
-        // First call: loading message with MarkdownV2
-        expect(replyFn.mock.calls[0][1]).toEqual({ parse_mode: 'MarkdownV2' });
+        // First call: loading message
+        expect(replyFn.mock.calls[0][1]).toEqual({ parse_mode: undefined });
         // Second call: summary content (plain text, no parse_mode)
         expect(replyFn.mock.calls[1][0]).toBe('Test summary content');
     });
@@ -53,6 +53,6 @@ describe('summary handler', () => {
 
         expect(replyFn).toHaveBeenCalledTimes(2);
         // Second call should be the error message
-        expect(replyFn.mock.calls[1][1]).toEqual({ parse_mode: 'MarkdownV2' });
+        expect(replyFn.mock.calls[1][1]).toEqual({ parse_mode: undefined });
     });
 });

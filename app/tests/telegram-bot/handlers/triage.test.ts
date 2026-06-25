@@ -63,7 +63,7 @@ describe('triage handler', () => {
         const [text, opts] = replyFn.mock.calls[0];
         expect(text).toContain('Coffee');
         expect(opts.reply_markup).toBeDefined();
-        expect(opts.parse_mode).toBe('MarkdownV2');
+        expect(opts.parse_mode).toBeUndefined();
     });
 
     it('categorize callback updates DB and shows next', async () => {

@@ -2,7 +2,7 @@ import type { Bot } from 'grammy';
 import { InlineKeyboard } from 'grammy';
 import type { BotContext, TransactionRow } from '../types';
 import { cached, bustCache } from '../cache';
-import { escapeMarkdownV2, formatTransaction, formatCurrency } from '../formatters';
+import { formatTransactionCard, thinSeparator } from '../formatters';
 import { paginationKeyboard, categoryKeyboard } from '../keyboards';
 import { t } from '../i18n';
 import logger from '../../logger.js';
@@ -68,12 +68,9 @@ function buildTransactionList(rows: TransactionRow[], title: string, offset: num
         return { text: t.recentEmpty, keyboard: new InlineKeyboard() };
     }
 
-    const lines = rows.map((txn, i) => {
-        const idx = escapeMarkdownV2(String(offset + i + 1));
-        return `${idx}\\. ${formatTransaction(txn)}`;
-    });
-
-    const text = [title, '', ...lines].join('\n');
+    const sep = thinSeparator();
+    const cards = rows.map((txn) => formatTransactionCard(txn));
+    const text = [title, '', sep, '', cards.join(`\n\n${sep}\n\n`), '', sep].join('\n');
     const kb = paginationKeyboard(pagePrefix, offset, PAGE_SIZE, hasMore);
 
     return { text, keyboard: kb };
@@ -82,17 +79,16 @@ function buildTransactionList(rows: TransactionRow[], title: string, offset: num
 export async function handleSearchQuery(ctx: BotContext, getDB: () => Promise<any>, query: string, offset = 0): Promise<void> {
     try {
         const { rows, hasMore } = await searchTransactions(getDB, query, offset);
-        const title = `${t.searchTitle} — "${escapeMarkdownV2(query)}"`;
+        const title = `${t.searchTitle} — "${query}"`;
         const { text, keyboard } = buildTransactionList(rows, title, offset, hasMore, `pg:search:${encodeURIComponent(query)}:`);
-        await ctx.reply(text, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
+        await ctx.reply(text, { parse_mode: undefined, reply_markup: keyboard });
     } catch (err: any) {
         logger.error({ err: err.message }, '[telegram-bot] /search failed');
-        await ctx.reply(t.errorGeneric);
+        await ctx.reply(t.errorGeneric, { parse_mode: undefined });
     }
 }
 
 export function registerTransactionsHandler(bot: Bot<BotContext>, getDB: () => Promise<any>): void {
-    // /recent command
     const handleRecent = async (ctx: BotContext, offset = 0) => {
         try {
             const { rows, hasMore } = await fetchRecentTransactions(getDB, offset);
@@ -100,20 +96,14 @@ export function registerTransactionsHandler(bot: Bot<BotContext>, getDB: () => P
                 rows, t.recentTitle, offset, hasMore, 'pg:recent:'
             );
 
-            // Add edit category button per row
             if (rows.length > 0) {
-                rows.forEach((txn) => {
-                    keyboard.row().text(
-                        `${t.editCategory} ${txn.name.slice(0, 20)}`,
-                        `tr:edit:${txn.id}`
-                    );
-                });
+                keyboard.row().text(t.editCategory, 'tr:pick');
             }
 
-            await ctx.reply(text, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
+            await ctx.reply(text, { parse_mode: undefined, reply_markup: keyboard });
         } catch (err: any) {
             logger.error({ err: err.message }, '[telegram-bot] /recent failed');
-            await ctx.reply(t.errorGeneric);
+            await ctx.reply(t.errorGeneric, { parse_mode: undefined });
         }
     };
 
@@ -123,63 +113,69 @@ export function registerTransactionsHandler(bot: Bot<BotContext>, getDB: () => P
         await handleRecent(ctx);
     });
 
-    // Pagination for recent
     bot.callbackQuery(/^pg:recent:(\d+)$/, async (ctx) => {
         await ctx.answerCallbackQuery();
         const offset = parseInt(ctx.match![1], 10);
         await handleRecent(ctx, offset);
     });
 
-    // /search command
+    // Edit category pick — show recent transactions with numbered buttons
+    bot.callbackQuery('tr:pick', async (ctx) => {
+        await ctx.answerCallbackQuery();
+        try {
+            const { rows } = await fetchRecentTransactions(getDB, 0);
+            if (rows.length === 0) return;
+            const kb = new InlineKeyboard();
+            rows.forEach((txn, i) => {
+                const label = `${i + 1}. ${txn.name.slice(0, 25)}`;
+                kb.text(label, `tr:edit:${txn.id}`).row();
+            });
+            await ctx.reply('בחר עסקה לעריכת קטגוריה:', { parse_mode: undefined, reply_markup: kb });
+        } catch (err: any) {
+            logger.error({ err: err.message }, '[telegram-bot] tr:pick failed');
+        }
+    });
+
     bot.command('search', async (ctx) => {
         const query = ctx.match?.trim();
         if (!query) {
-            await ctx.reply(t.searchPrompt);
+            await ctx.reply(t.searchPrompt, { parse_mode: undefined });
             if (ctx.session) {
                 ctx.session.conversation = { type: 'search_filter', step: 'awaiting_query', data: {} };
             }
             return;
         }
-        await handleSearch(ctx, query, 0);
+        await handleSearchQuery(ctx, getDB, query);
     });
 
     bot.callbackQuery('menu:search', async (ctx) => {
         await ctx.answerCallbackQuery();
-        await ctx.reply(t.searchPrompt);
+        await ctx.reply(t.searchPrompt, { parse_mode: undefined });
         if (ctx.session) {
             ctx.session.conversation = { type: 'search_filter', step: 'awaiting_query', data: {} };
         }
     });
 
-    const handleSearch = (ctx: BotContext, query: string, offset: number) =>
-        handleSearchQuery(ctx, getDB, query, offset);
-
-    // Pagination for search
     bot.callbackQuery(/^pg:search:(.+):(\d+)$/, async (ctx) => {
         await ctx.answerCallbackQuery();
         const query = decodeURIComponent(ctx.match![1]);
         const offset = parseInt(ctx.match![2], 10);
-        await handleSearch(ctx, query, offset);
+        await handleSearchQuery(ctx, getDB, query, offset);
     });
 
-    // Edit category flow: show category picker
     bot.callbackQuery(/^tr:edit:(\d+)$/, async (ctx) => {
         await ctx.answerCallbackQuery();
         const txnId = ctx.match![1];
         try {
             const categories = await fetchCategories(getDB);
             const kb = categoryKeyboard(categories, `cat:${txnId}:`);
-            await ctx.reply(
-                escapeMarkdownV2(`בחר קטגוריה לעסקה #${txnId}:`),
-                { parse_mode: 'MarkdownV2', reply_markup: kb }
-            );
+            await ctx.reply(`בחר קטגוריה לעסקה #${txnId}:`, { parse_mode: undefined, reply_markup: kb });
         } catch (err: any) {
             logger.error({ err: err.message }, '[telegram-bot] category picker failed');
             await ctx.answerCallbackQuery({ text: 'שגיאה בטעינת קטגוריות', show_alert: true });
         }
     });
 
-    // Apply category to transaction
     bot.callbackQuery(/^cat:(\d+):(.+)$/, async (ctx) => {
         const txnId = ctx.match![1];
         const category = ctx.match![2];
@@ -197,10 +193,7 @@ export function registerTransactionsHandler(bot: Bot<BotContext>, getDB: () => P
             bustCache('budget:');
             bustCache('status:');
             await ctx.answerCallbackQuery({ text: `✅ ${category}` });
-            await ctx.editMessageText(
-                escapeMarkdownV2(`✅ עסקה #${txnId} סווגה כ: ${category}`),
-                { parse_mode: 'MarkdownV2' }
-            );
+            await ctx.editMessageText(`✅ עסקה #${txnId} סווגה כ: ${category}`, { parse_mode: undefined });
         } catch (err: any) {
             logger.error({ err: err.message }, '[telegram-bot] category update failed');
             await ctx.answerCallbackQuery({ text: 'שגיאה בעדכון קטגוריה', show_alert: true });

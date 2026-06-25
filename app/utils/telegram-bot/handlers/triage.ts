@@ -1,7 +1,7 @@
 import type { Bot } from 'grammy';
 import type { BotContext } from '../types';
 import { bustCache, cached } from '../cache';
-import { escapeMarkdownV2, formatCurrency, formatDate } from '../formatters';
+import { formatTransactionCard } from '../formatters';
 import { categoryKeyboard } from '../keyboards';
 import { t } from '../i18n';
 import logger from '../../logger.js';
@@ -49,29 +49,30 @@ async function fetchCategories(getDB: () => Promise<any>): Promise<string[]> {
     });
 }
 
-function formatTriageTxn(txn: UncategorizedTxn): string {
-    const date = escapeMarkdownV2(formatDate(txn.date));
-    const name = escapeMarkdownV2(txn.name);
-    const amount = escapeMarkdownV2(formatCurrency(Math.abs(txn.price)));
-    return `📝 *${name}*\n💰 ${amount} \\| 📅 ${date}`;
-}
-
 async function showNextTriage(ctx: BotContext, getDB: () => Promise<any>, categorizedCount: number): Promise<void> {
     const items = await fetchUncategorized(getDB);
 
     if (items.length === 0) {
         const msg = categorizedCount > 0 ? t.triageDone(categorizedCount) : t.triageEmpty;
-        await ctx.reply(msg, { parse_mode: 'MarkdownV2' });
+        await ctx.reply(msg, { parse_mode: undefined });
         return;
     }
 
     const txn = items[0];
-    const text = `${t.triageTitle}\n\n${formatTriageTxn(txn)}\n\n_${escapeMarkdownV2(`${items.length} עסקאות נותרו`)}_`;
+    const card = formatTransactionCard({ name: txn.name, price: txn.price, date: txn.date, category: null });
+    const text = [
+        t.triageTitle,
+        '',
+        card,
+        '',
+        t.triageRemaining(items.length),
+    ].join('\n');
+
     const categories = await fetchCategories(getDB);
     const kb = categoryKeyboard(categories, `tri:cat:${txn.id}:`);
     kb.row().text(t.triageSkip, `tri:skip:${txn.id}`);
 
-    await ctx.reply(text, { parse_mode: 'MarkdownV2', reply_markup: kb });
+    await ctx.reply(text, { parse_mode: undefined, reply_markup: kb });
 }
 
 export function registerTriageHandler(bot: Bot<BotContext>, getDB: () => Promise<any>): void {
@@ -90,7 +91,6 @@ export function registerTriageHandler(bot: Bot<BotContext>, getDB: () => Promise
         await showNextTriage(ctx, getDB, 0);
     });
 
-    // Categorize a transaction in triage
     bot.callbackQuery(/^tri:cat:(\d+):(.+)$/, async (ctx) => {
         const txnId = ctx.match![1];
         const category = ctx.match![2];
@@ -123,7 +123,6 @@ export function registerTriageHandler(bot: Bot<BotContext>, getDB: () => Promise
         }
     });
 
-    // Skip a transaction in triage — just show next
     bot.callbackQuery(/^tri:skip:(\d+)$/, async (ctx) => {
         await ctx.answerCallbackQuery();
         const count = (ctx.session?.conversation?.data?.categorized as number) || 0;

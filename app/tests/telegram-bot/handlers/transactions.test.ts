@@ -69,7 +69,7 @@ describe('transactions handler', () => {
 
         expect(replyFn).toHaveBeenCalledTimes(1);
         const [text, opts] = replyFn.mock.calls[0];
-        expect(opts.parse_mode).toBe('MarkdownV2');
+        expect(opts.parse_mode).toBeUndefined();
         expect(text).toContain('עסקאות אחרונות');
     });
 
@@ -126,7 +126,7 @@ describe('transactions handler', () => {
         const handler = bot.command.mock.calls.find((c: any) => c[0] === 'recent')[1];
         await handler(ctx);
 
-        expect(replyFn).toHaveBeenCalledWith(expect.stringContaining('השתבש'));
+        expect(replyFn).toHaveBeenCalledWith(expect.stringContaining('השתבש'), expect.anything());
     });
 
     it('/search with no args sets session conversation', async () => {
@@ -136,7 +136,7 @@ describe('transactions handler', () => {
         const handler = bot.command.mock.calls.find((c: any) => c[0] === 'search')[1];
         await handler(ctx);
 
-        expect(replyFn).toHaveBeenCalledWith(expect.stringContaining('חיפוש'));
+        expect(replyFn).toHaveBeenCalledWith(expect.stringContaining('חיפוש'), expect.anything());
         expect(session.conversation).toEqual({
             type: 'search_filter',
             step: 'awaiting_query',
@@ -156,7 +156,7 @@ describe('transactions handler', () => {
 
         expect(replyFn).toHaveBeenCalledTimes(1);
         const [text, opts] = replyFn.mock.calls[0];
-        expect(opts.parse_mode).toBe('MarkdownV2');
+        expect(opts.parse_mode).toBeUndefined();
         expect(text).toContain('תוצאות חיפוש');
     });
 

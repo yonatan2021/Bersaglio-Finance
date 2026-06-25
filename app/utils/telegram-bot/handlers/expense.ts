@@ -1,8 +1,7 @@
 import type { Bot } from 'grammy';
 import type { BotContext } from '../types';
-import { bustCache } from '../cache';
-import { cached } from '../cache';
-import { escapeMarkdownV2, formatCurrency } from '../formatters';
+import { bustCache, cached } from '../cache';
+import { formatCurrency } from '../formatters';
 import { categoryKeyboard, confirmCancelKeyboard } from '../keyboards';
 import { t } from '../i18n';
 import logger from '../../logger.js';
@@ -27,7 +26,6 @@ export function parseExpenseInput(text: string): ParsedExpense | null {
     let amountIdx = -1;
     const isIncome = parts.some(p => p.startsWith('+'));
 
-    // Find amount (first token that looks like a number)
     for (let i = 0; i < parts.length; i++) {
         const cleaned = parts[i].replace(/^\+/, '');
         const num = parseFloat(cleaned);
@@ -40,7 +38,6 @@ export function parseExpenseInput(text: string): ParsedExpense | null {
 
     if (amount === null || amountIdx === -1) return null;
 
-    // Find currency
     const remaining = parts.filter((_, i) => i !== amountIdx);
     const currIdx = remaining.findIndex(p => CURRENCY_RE.test(p));
     if (currIdx !== -1) {
@@ -50,12 +47,9 @@ export function parseExpenseInput(text: string): ParsedExpense | null {
 
     if (remaining.length === 0) return null;
 
-    // Last remaining token might be category if we have >1 remaining tokens
-    // Heuristic: if there are 2+ remaining parts, last one is category
     let category: string | undefined;
     let name: string;
     if (remaining.length >= 2) {
-        // Check if the last part could be a category (not a number)
         const lastPart = remaining[remaining.length - 1];
         if (isNaN(parseFloat(lastPart))) {
             category = lastPart;
@@ -111,33 +105,48 @@ async function insertExpense(getDB: () => Promise<any>, name: string, amount: nu
     }
 }
 
+function buildExpenseConfirmation(name: string, amount: number, category?: string): string {
+    const sign = amount >= 0 ? '+' : '';
+    const lines = [
+        '📝 אישור הוצאה',
+        '',
+        `   שם: ${name}`,
+        `   סכום: ${sign}${formatCurrency(Math.abs(amount))}`,
+    ];
+    if (category) {
+        lines.push(`   קטגוריה: ${category}`);
+    }
+    return lines.join('\n');
+}
+
 export function registerExpenseHandler(bot: Bot<BotContext>, getDB: () => Promise<any>): void {
     bot.command('expense', async (ctx) => {
         const input = ctx.match?.trim();
 
-        // Quick parse mode
         if (input) {
             const parsed = parseExpenseInput(input);
             if (!parsed) {
-                await ctx.reply(t.expenseInvalidAmount);
+                await ctx.reply(t.expenseInvalidAmount, { parse_mode: undefined });
                 return;
             }
 
             try {
                 const txn = await insertExpense(getDB, parsed.name, parsed.amount, parsed.category);
-                const sign = txn.price >= 0 ? '\\+' : '';
-                await ctx.reply(
-                    `${t.expenseAdded}\n${escapeMarkdownV2('📝')} ${escapeMarkdownV2(txn.name)}\n${escapeMarkdownV2('💰')} ${sign}${escapeMarkdownV2(formatCurrency(Math.abs(txn.price)))}`,
-                    { parse_mode: 'MarkdownV2' }
-                );
+                const sign = txn.price >= 0 ? '+' : '';
+                const msg = [
+                    t.expenseAdded,
+                    '',
+                    `   📝 ${txn.name}`,
+                    `   💰 ${sign}${formatCurrency(Math.abs(txn.price))}`,
+                ].join('\n');
+                await ctx.reply(msg, { parse_mode: undefined });
             } catch (err: any) {
                 logger.error({ err: err.message }, '[telegram-bot] /expense quick-add failed');
-                await ctx.reply(t.errorGeneric);
+                await ctx.reply(t.errorGeneric, { parse_mode: undefined });
             }
             return;
         }
 
-        // Guided flow
         if (ctx.session) {
             ctx.session.conversation = {
                 type: 'expense',
@@ -145,7 +154,7 @@ export function registerExpenseHandler(bot: Bot<BotContext>, getDB: () => Promis
                 data: {},
             };
         }
-        await ctx.reply(t.expenseAskName);
+        await ctx.reply(t.expenseAskName, { parse_mode: undefined });
     });
 
     bot.callbackQuery('menu:expense', async (ctx) => {
@@ -157,10 +166,9 @@ export function registerExpenseHandler(bot: Bot<BotContext>, getDB: () => Promis
                 data: {},
             };
         }
-        await ctx.reply(t.expenseAskName);
+        await ctx.reply(t.expenseAskName, { parse_mode: undefined });
     });
 
-    // Expense category selection in guided flow
     bot.callbackQuery(/^exp:cat:(.+)$/, async (ctx) => {
         await ctx.answerCallbackQuery();
         if (!ctx.session?.conversation || ctx.session.conversation.type !== 'expense') return;
@@ -170,11 +178,11 @@ export function registerExpenseHandler(bot: Bot<BotContext>, getDB: () => Promis
         ctx.session.conversation.step = 'confirm';
 
         const { name, amount } = ctx.session.conversation.data as { name: string; amount: number };
-        const sign = amount >= 0 ? '\\+' : '';
-        await ctx.editMessageText(
-            `*${escapeMarkdownV2('אישור הוצאה:')}*\n${escapeMarkdownV2('📝')} ${escapeMarkdownV2(String(name))}\n${escapeMarkdownV2('💰')} ${sign}${escapeMarkdownV2(formatCurrency(Math.abs(amount)))}\n${escapeMarkdownV2('📁')} ${escapeMarkdownV2(category)}`,
-            { parse_mode: 'MarkdownV2', reply_markup: confirmCancelKeyboard('exp:confirm', 'exp:cancel') }
-        );
+        const msg = buildExpenseConfirmation(String(name), amount, category);
+        await ctx.editMessageText(msg, {
+            parse_mode: undefined,
+            reply_markup: confirmCancelKeyboard('exp:confirm', 'exp:cancel'),
+        });
     });
 
     bot.callbackQuery('exp:confirm', async (ctx) => {
@@ -185,7 +193,7 @@ export function registerExpenseHandler(bot: Bot<BotContext>, getDB: () => Promis
         try {
             await insertExpense(getDB, name, amount, category);
             ctx.session.conversation = undefined;
-            await ctx.editMessageText(t.expenseAdded, { parse_mode: 'MarkdownV2' });
+            await ctx.editMessageText(t.expenseAdded, { parse_mode: undefined });
         } catch (err: any) {
             logger.error({ err: err.message }, '[telegram-bot] expense confirm failed');
             await ctx.answerCallbackQuery({ text: 'שגיאה בשמירת ההוצאה', show_alert: true });
@@ -197,7 +205,7 @@ export function registerExpenseHandler(bot: Bot<BotContext>, getDB: () => Promis
         if (ctx.session) {
             ctx.session.conversation = undefined;
         }
-        await ctx.editMessageText(t.expenseCancelled, { parse_mode: 'MarkdownV2' });
+        await ctx.editMessageText(t.expenseCancelled, { parse_mode: undefined });
     });
 }
 
@@ -210,7 +218,7 @@ export async function handleExpenseFlowMessage(ctx: BotContext, getDB: () => Pro
     if (conv.step === 'name') {
         conv.data.name = text;
         conv.step = 'amount';
-        await ctx.reply(t.expenseAskAmount);
+        await ctx.reply(t.expenseAskAmount, { parse_mode: undefined });
         return true;
     }
 
@@ -218,7 +226,7 @@ export async function handleExpenseFlowMessage(ctx: BotContext, getDB: () => Pro
         const isIncome = text.startsWith('+');
         const num = parseFloat(text.replace(/^\+/, ''));
         if (isNaN(num) || !isFinite(num)) {
-            await ctx.reply(t.expenseInvalidAmount);
+            await ctx.reply(t.expenseInvalidAmount, { parse_mode: undefined });
             return true;
         }
         conv.data.amount = isIncome ? Math.abs(num) : -Math.abs(num);
@@ -226,7 +234,7 @@ export async function handleExpenseFlowMessage(ctx: BotContext, getDB: () => Pro
 
         const categories = await fetchCategories(getDB);
         const kb = categoryKeyboard(categories, 'exp:cat:');
-        await ctx.reply(t.expenseAskCategory, { reply_markup: kb });
+        await ctx.reply(t.expenseAskCategory, { parse_mode: undefined, reply_markup: kb });
         return true;
     }
 

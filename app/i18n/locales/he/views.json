@@ -101,7 +101,9 @@
     "snackbarNicknameRemoved": "כינוי הכרטיס הוסר",
     "snackbarFailedSaveNickname": "שמירת כינוי הכרטיס נכשלה",
     "validationStartBeforeEnd": "תאריך ההתחלה חייב להיות לפני תאריך הסיום",
-    "validationRangeExceeds": "טווח התאריכים לא יכול לעלות על {{years}} שנים"
+    "validationRangeExceeds": "טווח התאריכים לא יכול לעלות על {{years}} שנים",
+    "bankIncome": "הכנסות",
+    "bankExpenses": "הוצאות"
   },
   "breakdown": {
     "title": "פירוט",

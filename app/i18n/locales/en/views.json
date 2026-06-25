@@ -101,7 +101,9 @@
     "snackbarNicknameRemoved": "Card nickname removed",
     "snackbarFailedSaveNickname": "Failed to save card nickname",
     "validationStartBeforeEnd": "Start date must be before end date",
-    "validationRangeExceeds": "Date range cannot exceed {{years}} years"
+    "validationRangeExceeds": "Date range cannot exceed {{years}} years",
+    "bankIncome": "Income",
+    "bankExpenses": "Expenses"
   },
   "breakdown": {
     "title": "Breakdown",

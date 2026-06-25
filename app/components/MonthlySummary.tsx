@@ -1036,6 +1036,7 @@ const MonthlySummary: React.FC = () => {
     // getDateRangeForContext removed
 
 
+    const totalBankIncome = finalBankSummary.reduce((sum, bank) => sum + bank.income, 0);
     setScreenContext({
       view: 'summary',
       dateRange: {
@@ -1044,13 +1045,13 @@ const MonthlySummary: React.FC = () => {
         mode: dateRangeMode
       },
       summary: {
-        totalIncome: 0,
+        totalIncome: totalBankIncome,
         totalExpenses: totals.card_expenses,
         creditCardExpenses: totals.card_expenses,
         categories: []
       }
     });
-  }, [totals.card_expenses, dateRangeMode, selectedYear, selectedMonth, customStartDate, customEndDate, setScreenContext, startDate, endDate]);
+  }, [totals.card_expenses, finalBankSummary, dateRangeMode, selectedYear, selectedMonth, customStartDate, customEndDate, setScreenContext, startDate, endDate]);
 
 
 
@@ -1431,6 +1432,20 @@ const MonthlySummary: React.FC = () => {
                                         </Typography>
                                         <ChevronRightIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.7 }} />
                                       </Box>
+                                      {bankDetails && (bankDetails.income > 0 || bankDetails.expenses > 0) && (
+                                        <Box sx={{ display: 'flex', gap: 1, mt: 0.25 }}>
+                                          {bankDetails.income > 0 && (
+                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: '#10B981', fontWeight: 600 }}>
+                                              {t('summary.bankIncome')}: ₪{fmt(bankDetails.income)}
+                                            </Typography>
+                                          )}
+                                          {bankDetails.expenses > 0 && (
+                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: '#F43F5E', fontWeight: 600 }}>
+                                              {t('summary.bankExpenses')}: ₪{fmt(bankDetails.expenses)}
+                                            </Typography>
+                                          )}
+                                        </Box>
+                                      )}
                                     </Box>
                                   )}
                                 </Box>

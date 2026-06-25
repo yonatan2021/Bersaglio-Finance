@@ -3,6 +3,7 @@ import { loadMessagingSettings } from '../messaging/settings.js';
 import { authMiddleware } from './auth';
 import { registerStatusHandler } from './handlers/status';
 import { registerTransactionsHandler } from './handlers/transactions';
+import { registerExpenseHandler, handleExpenseFlowMessage } from './handlers/expense';
 import { mainMenuKeyboard } from './keyboards';
 import { t } from './i18n';
 import logger from '../logger.js';
@@ -28,6 +29,23 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
     // Register handlers
     registerStatusHandler(bot, getDB);
     registerTransactionsHandler(bot, getDB);
+    registerExpenseHandler(bot, getDB);
+
+    // Message handler: guided flows first, then AI fallback (Task 7)
+    bot.on('message:text', async (ctx) => {
+        // Check guided expense flow
+        const handled = await handleExpenseFlowMessage(ctx, getDB);
+        if (handled) return;
+
+        // Check search query flow
+        if (ctx.session?.conversation?.type === 'search_filter' && ctx.session.conversation.step === 'awaiting_query') {
+            const query = ctx.message.text.trim();
+            ctx.session.conversation = undefined;
+            // Search flow delegated to transactions handler — will be wired in future task
+        }
+
+        // AI fallback will be registered in Task 7
+    });
 
     bot.catch((err) => {
         logger.error({ err: err.message, stack: err.stack }, '[telegram-bot] Unhandled error');

@@ -30,8 +30,8 @@
     "linkCardTooltip": "Link card to bank account in settings"
   },
   "summary": {
-    "totalCharges": "Total Charges",
-    "totalCredits": "Total Credits",
+    "totalCharges": "Total Expenses",
+    "totalCredits": "Total Income",
     "net": "Net",
     "breakdown": "Breakdown",
     "creditCard": "Credit Card",

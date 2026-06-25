@@ -30,8 +30,8 @@
     "linkCardTooltip": "קשר כרטיס לחשבון בנק בהגדרות"
   },
   "summary": {
-    "totalCharges": "סה״כ חיובים",
-    "totalCredits": "סה״כ זיכויים",
+    "totalCharges": "סה״כ הוצאות",
+    "totalCredits": "סה״כ הכנסות",
     "net": "נטו",
     "breakdown": "פירוט",
     "creditCard": "אשראי",

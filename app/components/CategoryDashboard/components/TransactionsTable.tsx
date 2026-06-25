@@ -15,6 +15,8 @@ import { useCardVendors } from '../utils/useCardVendors';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import NotesIcon from '@mui/icons-material/Notes';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { CardVendorIcon } from '../../CardVendorsModal';
 import { getTableHeaderCellStyle, getTableBodyCellStyle, TABLE_ROW_HOVER_STYLE, getTableRowHoverBackground } from '../utils/tableStyles';
 import DeleteConfirmationDialog from '../../DeleteConfirmationDialog';
@@ -102,6 +104,7 @@ export interface Transaction {
   is_credit?: boolean;
   cc_vendor_resolved?: string;
   cc_account_number_resolved?: string;
+  category_type?: string;
 }
 
 export interface TransactionsTableProps {
@@ -816,25 +819,27 @@ const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transac
   const theme = useTheme();
 
   const stats = React.useMemo(() => {
-    let totalCharges = 0;
-    let totalCredits = 0;
+    let totalExpenses = 0;
+    let totalIncome = 0;
     let creditCardTotal = 0;
     let debitTotal = 0;
     let directTotal = 0;
 
     transactions.forEach(tx => {
       const amount = Math.abs(tx.price);
-      if (tx.is_credit) {
-        totalCredits += amount;
+      const catType = tx.category_type || 'expense';
+      if (catType === 'transfer') return;
+      if (catType === 'income') {
+        totalIncome += amount;
       } else {
-        totalCharges += amount;
+        totalExpenses += amount;
         if (tx.card_type === 'debit') debitTotal += amount;
         else if (tx.card_type === 'direct') directTotal += amount;
         else creditCardTotal += amount;
       }
     });
 
-    return { totalCharges, totalCredits, net: totalCharges - totalCredits, creditCardTotal, debitTotal, directTotal };
+    return { totalExpenses, totalIncome, net: totalIncome - totalExpenses, creditCardTotal, debitTotal, directTotal };
   }, [transactions]);
 
   return (
@@ -850,25 +855,31 @@ const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transac
     }}>
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', flex: 1 }}>
         <Box>
-          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.totalCharges')}</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--n-error)' }}>₪{formatNumber(stats.totalCharges)}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <TrendingDownIcon sx={{ fontSize: '0.85rem' }} />
+            {t('summary.totalCharges')}
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--n-error)', fontVariantNumeric: 'tabular-nums' }}>₪{formatNumber(stats.totalExpenses)}</Typography>
         </Box>
         <Box>
-          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.totalCredits')}</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--n-success)' }}>₪{formatNumber(stats.totalCredits)}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <TrendingUpIcon sx={{ fontSize: '0.85rem' }} />
+            {t('summary.totalCredits')}
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--n-success)', fontVariantNumeric: 'tabular-nums' }}>₪{formatNumber(stats.totalIncome)}</Typography>
         </Box>
         <Box>
-          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.net')}</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 700 }}>₪{formatNumber(stats.net)}</Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{t('summary.net')}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: stats.net > 0 ? 'var(--n-success)' : stats.net < 0 ? 'var(--n-error)' : undefined, fontVariantNumeric: 'tabular-nums' }}>₪{formatNumber(stats.net)}</Typography>
         </Box>
       </Box>
       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>{t('summary.breakdown')}:</Typography>
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('summary.creditCard')} ₪{formatNumber(stats.creditCardTotal)}</Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{t('summary.breakdown')}:</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('summary.creditCard')} ₪{formatNumber(stats.creditCardTotal)}</Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>·</Typography>
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('summary.debitCard')} ₪{formatNumber(stats.debitTotal)}</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('summary.debitCard')} ₪{formatNumber(stats.debitTotal)}</Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary' }}>·</Typography>
-        <Typography variant="caption" sx={{ fontWeight: 600 }}>{t('summary.directBank')} ₪{formatNumber(stats.directTotal)}</Typography>
+        <Typography variant="caption" sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{t('summary.directBank')} ₪{formatNumber(stats.directTotal)}</Typography>
       </Box>
     </Box>
   );

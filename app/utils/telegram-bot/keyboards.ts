@@ -5,6 +5,7 @@ export function mainMenuKeyboard(): InlineKeyboard {
     return new InlineKeyboard()
         .text(t.menuStatus, 'menu:status').text(t.menuRecent, 'menu:recent').row()
         .text(t.menuExpense, 'menu:expense').text(t.menuSearch, 'menu:search').row()
+        .text('📊 תקציב', 'menu:budget').text('📋 דוח', 'menu:report').row()
         .text(t.menuSummary, 'menu:summary').text(t.menuSync, 'menu:sync').row()
         .text(t.menuTriage, 'menu:triage').text(t.menuSettings, 'menu:settings');
 }

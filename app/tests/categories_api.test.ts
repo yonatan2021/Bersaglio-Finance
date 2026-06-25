@@ -57,19 +57,19 @@ describe('Categories List API (/api/categories)', () => {
         expect(mockRes.json).toHaveBeenCalledWith([]);
     });
 
-    it('should return {name,count} objects when withCounts=true', async () => {
+    it('should return {name,count,type} objects when withCounts=true', async () => {
         mockClient.query.mockResolvedValue({
             rows: [
-                { name: 'Food', count: '50' },
-                { name: 'Transport', count: '30' }
+                { name: 'Food', count: '50', type: 'expense' },
+                { name: 'Transport', count: '30', type: null }
             ]
         });
 
         await categoriesHandler({ method: 'GET', query: { withCounts: 'true' } } as any, mockRes as any);
 
         expect(mockRes.json).toHaveBeenCalledWith([
-            { name: 'Food', count: 50 },
-            { name: 'Transport', count: 30 }
+            { name: 'Food', count: 50, type: 'expense' },
+            { name: 'Transport', count: 30, type: null }
         ]);
     });
 });

@@ -338,7 +338,8 @@ const getTransactions = createApiHandler({
             (SELECT bvc.nickname FROM vendor_credentials bvc
              WHERE bvc.vendor = t.vendor AND bvc.is_active = true LIMIT 1)
           ) as bank_account_name,
-          bank_tx.date as bank_debit_date
+          bank_tx.date as bank_debit_date,
+          COALESCE(ct.type, 'expense') as category_type
         FROM transactions t
         LEFT JOIN card_ownership co ON t.vendor = co.vendor AND t.account_number = co.account_number
         LEFT JOIN vendor_credentials vc ON co.credential_id = vc.id
@@ -350,6 +351,7 @@ const getTransactions = createApiHandler({
         LEFT JOIN card_vendors cc_cv ON RIGHT(cc.account_number, 4) = cc_cv.last4_digits
         LEFT JOIN transaction_reconciliations cc_tr ON t.identifier = cc_tr.cc_identifier AND t.vendor = cc_tr.cc_vendor AND cc_tr.status = 'approved'
         LEFT JOIN transactions bank_tx ON cc_tr.bank_identifier = bank_tx.identifier AND cc_tr.bank_vendor = bank_tx.vendor
+        LEFT JOIN category_types ct ON t.category = ct.category
         ${whereClause}
         ORDER BY ${orderByCol} ${sortDir}, t.identifier, t.vendor
         LIMIT ${limitParam}
@@ -397,7 +399,8 @@ const getTransactions = createApiHandler({
             card6_digits_encrypted: undefined,
             is_reconciled: row.is_reconciled === true || row.is_reconciled === 't',
             is_debit: row.is_debit === true || row.is_debit === 't',
-            is_credit: row.price > 0
+            is_credit: row.price > 0,
+            category_type: row.category_type
         }));
     }
 });

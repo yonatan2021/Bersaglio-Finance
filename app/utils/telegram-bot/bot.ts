@@ -4,6 +4,9 @@ import { authMiddleware } from './auth';
 import { registerStatusHandler } from './handlers/status';
 import { registerTransactionsHandler } from './handlers/transactions';
 import { registerExpenseHandler, handleExpenseFlowMessage } from './handlers/expense';
+import { registerSummaryHandler } from './handlers/summary';
+import { registerTriageHandler } from './handlers/triage';
+import { registerSyncHandler } from './handlers/sync';
 import { mainMenuKeyboard } from './keyboards';
 import { t } from './i18n';
 import logger from '../logger.js';
@@ -30,6 +33,9 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
     registerStatusHandler(bot, getDB);
     registerTransactionsHandler(bot, getDB);
     registerExpenseHandler(bot, getDB);
+    registerSummaryHandler(bot);
+    registerTriageHandler(bot, getDB);
+    registerSyncHandler(bot);
 
     // Message handler: guided flows first, then AI fallback (Task 7)
     bot.on('message:text', async (ctx) => {

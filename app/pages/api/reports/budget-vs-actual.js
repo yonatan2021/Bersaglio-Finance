@@ -1,7 +1,5 @@
 import { getDB } from "../db";
 import logger from '../../../utils/logger.js';
-import { BANK_VENDORS } from '../../../utils/constants.js';
-
 import { getBillingCycleSql } from "../../../utils/transaction_logic";
 import { getBillingCycleStartDay } from "../utils/scraperUtils";
 
@@ -43,9 +41,6 @@ export default async function handler(req, res) {
     let actualSpendingSql;
     let actualParams;
 
-    // Create placeholders for bank vendors exclusion ($2, $3, ...)
-    const bankPlaceholders = BANK_VENDORS.map((_, idx) => `$${idx + 2}`).join(', ');
-
     if (billingCycle || cycle) {
       // Use billing cycle logic
       const cycleValue = billingCycle || cycle;
@@ -60,8 +55,9 @@ export default async function handler(req, res) {
           COALESCE(NULLIF(category, ''), 'Uncategorized') as category,
           ABS(ROUND(SUM(price))) as actual_spent
         FROM transactions
+        LEFT JOIN category_types ct ON transactions.category = ct.category
         WHERE (${effectiveMonthSql}) = $1
-          AND COALESCE(category, '') != 'Bank'
+          AND COALESCE(ct.type, 'expense') = 'expense'
           AND NOT (
             transaction_type = 'bank' AND (
               name ILIKE '%מסטרקרד%' OR
@@ -71,6 +67,15 @@ export default async function handler(req, res) {
               name ILIKE '%אמריקן אקספרס%' OR
               name ILIKE '%מקס%' OR
               name ILIKE '%כרטיסי אשראי%'
+            )
+          )
+          AND NOT (
+            transaction_type = 'bank'
+            AND EXISTS (
+              SELECT 1 FROM transaction_reconciliations tr
+              WHERE tr.bank_identifier = transactions.identifier
+                AND tr.bank_vendor = transactions.vendor
+                AND tr.status = 'approved'
             )
           )
         GROUP BY COALESCE(NULLIF(category, ''), 'Uncategorized')
@@ -83,8 +88,9 @@ export default async function handler(req, res) {
           COALESCE(NULLIF(category, ''), 'Uncategorized') as category,
           ABS(ROUND(SUM(price))) as actual_spent
         FROM transactions
+        LEFT JOIN category_types ct ON transactions.category = ct.category
         WHERE date >= $1 AND date <= $2
-          AND COALESCE(category, '') != 'Bank'
+          AND COALESCE(ct.type, 'expense') = 'expense'
           AND NOT (
             transaction_type = 'bank' AND (
               name ILIKE '%מסטרקרד%' OR
@@ -94,6 +100,15 @@ export default async function handler(req, res) {
               name ILIKE '%אמריקן אקספרס%' OR
               name ILIKE '%מקס%' OR
               name ILIKE '%כרטיסי אשראי%'
+            )
+          )
+          AND NOT (
+            transaction_type = 'bank'
+            AND EXISTS (
+              SELECT 1 FROM transaction_reconciliations tr
+              WHERE tr.bank_identifier = transactions.identifier
+                AND tr.bank_vendor = transactions.vendor
+                AND tr.status = 'approved'
             )
           )
         GROUP BY COALESCE(NULLIF(category, ''), 'Uncategorized')

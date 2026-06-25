@@ -69,6 +69,22 @@ const handler = createApiHandler({
       }
     }
 
+    // Exclude reconciled bank transactions to prevent double-counting
+    const reconciliationExclusion = `NOT (
+      t.transaction_type = 'bank'
+      AND EXISTS (
+        SELECT 1 FROM transaction_reconciliations tr
+        WHERE tr.bank_identifier = t.identifier
+          AND tr.bank_vendor = t.vendor
+          AND tr.status = 'approved'
+      )
+    )`;
+    if (whereClause) {
+      whereClause += ` AND ${reconciliationExclusion}`;
+    } else {
+      whereClause = `WHERE ${reconciliationExclusion}`;
+    }
+
     const credentialJoin = `
       LEFT JOIN card_ownership co ON t.vendor = co.vendor AND RIGHT(t.account_number, 4) = RIGHT(co.account_number, 4) AND (co.is_hidden = false OR co.is_hidden IS NULL)
       LEFT JOIN vendor_credentials vc ON co.credential_id = vc.id
@@ -139,8 +155,9 @@ const handler = createApiHandler({
       `;
     } else if (groupBy === 'category') {
       sql = `
-        SELECT 
+        SELECT
           COALESCE(NULLIF(t.category, ''), 'Uncategorized') as category,
+          COALESCE(ct.type, 'expense') as category_type,
           COALESCE(SUM(t.price), 0)::numeric as total,
           COALESCE(SUM(t.price), 0)::numeric as amount,
           COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
@@ -151,8 +168,9 @@ const handler = createApiHandler({
           COUNT(*)::integer as count,
           COUNT(*) OVER() as total_count
         FROM transactions t
+        LEFT JOIN category_types ct ON t.category = ct.category
         ${whereClause}
-        GROUP BY COALESCE(NULLIF(t.category, ''), 'Uncategorized')
+        GROUP BY COALESCE(NULLIF(t.category, ''), 'Uncategorized'), COALESCE(ct.type, 'expense')
         ORDER BY ${orderClause}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;

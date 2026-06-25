@@ -79,6 +79,18 @@ function buildTransactionList(rows: TransactionRow[], title: string, offset: num
     return { text, keyboard: kb };
 }
 
+export async function handleSearchQuery(ctx: BotContext, getDB: () => Promise<any>, query: string, offset = 0): Promise<void> {
+    try {
+        const { rows, hasMore } = await searchTransactions(getDB, query, offset);
+        const title = `${t.searchTitle} — "${escapeMarkdownV2(query)}"`;
+        const { text, keyboard } = buildTransactionList(rows, title, offset, hasMore, `pg:search:${encodeURIComponent(query)}:`);
+        await ctx.reply(text, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
+    } catch (err: any) {
+        logger.error({ err: err.message }, '[telegram-bot] /search failed');
+        await ctx.reply(t.errorGeneric);
+    }
+}
+
 export function registerTransactionsHandler(bot: Bot<BotContext>, getDB: () => Promise<any>): void {
     // /recent command
     const handleRecent = async (ctx: BotContext, offset = 0) => {
@@ -139,17 +151,8 @@ export function registerTransactionsHandler(bot: Bot<BotContext>, getDB: () => P
         }
     });
 
-    const handleSearch = async (ctx: BotContext, query: string, offset: number) => {
-        try {
-            const { rows, hasMore } = await searchTransactions(getDB, query, offset);
-            const title = `${t.searchTitle} — "${escapeMarkdownV2(query)}"`;
-            const { text, keyboard } = buildTransactionList(rows, title, offset, hasMore, `pg:search:${encodeURIComponent(query)}:`);
-            await ctx.reply(text, { parse_mode: 'MarkdownV2', reply_markup: keyboard });
-        } catch (err: any) {
-            logger.error({ err: err.message }, '[telegram-bot] /search failed');
-            await ctx.reply(t.errorGeneric);
-        }
-    };
+    const handleSearch = (ctx: BotContext, query: string, offset: number) =>
+        handleSearchQuery(ctx, getDB, query, offset);
 
     // Pagination for search
     bot.callbackQuery(/^pg:search:(.+):(\d+)$/, async (ctx) => {

@@ -49,6 +49,9 @@ interface CardSummary {
   card_expenses: number;
   bank_income: number;
   bank_expenses: number;
+  credit_expenses: number;
+  debit_expenses: number;
+  bank_direct_expenses: number;
   card_vendor?: string | null;
   bank_account_id?: number | null;
   bank_account_nickname?: string | null;
@@ -533,6 +536,9 @@ const MonthlySummary: React.FC = () => {
           card_expenses: string | number;
           bank_income?: string | number;
           bank_expenses?: string | number;
+          credit_expenses?: string | number;
+          debit_expenses?: string | number;
+          bank_direct_expenses?: string | number;
           bank_account_id?: number | null;
           bank_account_nickname?: string | null;
           bank_account_number?: string | null;
@@ -556,6 +562,9 @@ const MonthlySummary: React.FC = () => {
             card_expenses: Number(c.card_expenses),
             bank_income: Number(c.bank_income || 0),
             bank_expenses: Number(c.bank_expenses || 0),
+            credit_expenses: Number(c.credit_expenses || 0),
+            debit_expenses: Number(c.debit_expenses || 0),
+            bank_direct_expenses: Number(c.bank_direct_expenses || 0),
             bank_account_id: c.bank_account_id || null,
             bank_account_nickname: c.bank_account_nickname || null,
             bank_account_number: c.bank_account_number || null,
@@ -1024,10 +1033,13 @@ const MonthlySummary: React.FC = () => {
 
         if (!isBank) {
           acc.card_expenses += card.card_expenses;
+          acc.credit_expenses += card.credit_expenses;
+          acc.debit_expenses += card.debit_expenses;
+          acc.bank_direct_expenses += card.bank_direct_expenses;
         }
         return acc;
       },
-      { card_expenses: 0 }
+      { card_expenses: 0, credit_expenses: 0, debit_expenses: 0, bank_direct_expenses: 0 }
     );
   }, [cardSummary, cardVendorMap]);
 
@@ -1037,6 +1049,7 @@ const MonthlySummary: React.FC = () => {
 
 
     const totalBankIncome = finalBankSummary.reduce((sum, bank) => sum + bank.income, 0);
+    const totalAllExpenses = totals.credit_expenses + totals.debit_expenses + totals.bank_direct_expenses;
     setScreenContext({
       view: 'summary',
       dateRange: {
@@ -1046,12 +1059,14 @@ const MonthlySummary: React.FC = () => {
       },
       summary: {
         totalIncome: totalBankIncome,
-        totalExpenses: totals.card_expenses,
-        creditCardExpenses: totals.card_expenses,
+        totalExpenses: totalAllExpenses,
+        creditCardExpenses: totals.credit_expenses,
+        debitCardExpenses: totals.debit_expenses,
+        bankDirectExpenses: totals.bank_direct_expenses,
         categories: []
       }
     });
-  }, [totals.card_expenses, finalBankSummary, dateRangeMode, selectedYear, selectedMonth, customStartDate, customEndDate, setScreenContext, startDate, endDate]);
+  }, [totals.credit_expenses, totals.debit_expenses, totals.bank_direct_expenses, finalBankSummary, dateRangeMode, selectedYear, selectedMonth, customStartDate, customEndDate, setScreenContext, startDate, endDate]);
 
 
 
@@ -1199,11 +1214,24 @@ const MonthlySummary: React.FC = () => {
                   </Box>
                   <Box>
                     <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.02em', fontSize: { lg: '1.75rem' } }}>
-                      ₪{fmt(totals.card_expenses)}
+                      ₪{fmt(totals.credit_expenses + totals.debit_expenses + totals.bank_direct_expenses)}
                     </Typography>
 
+                    {/* 3-way expense breakdown */}
+                    {(totals.credit_expenses > 0 || totals.debit_expenses > 0 || totals.bank_direct_expenses > 0) && (
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {[
+                          totals.credit_expenses > 0 && `${t('summary.creditExpenses')} ₪${fmt(totals.credit_expenses)}`,
+                          totals.debit_expenses > 0 && `${t('summary.debitExpenses')} ₪${fmt(totals.debit_expenses)}`,
+                          totals.bank_direct_expenses > 0 && `${t('summary.bankDirectExpenses')} ₪${fmt(totals.bank_direct_expenses)}`
+                        ].filter(Boolean).join(' · ')}
+                      </Typography>
+                    )}
+
                     {/* Budget Comparison */}
-                    {(dateRangeMode === 'billing' || dateRangeMode === 'calendar') && (
+                    {(dateRangeMode === 'billing' || dateRangeMode === 'calendar') && (() => {
+                      const totalExpenses = totals.credit_expenses + totals.debit_expenses + totals.bank_direct_expenses;
+                      return (
                       <Box sx={{ mt: 0.5, minWidth: '180px' }}>
                         {isEditingBudget ? (
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }} onClick={e => e.stopPropagation()}>
@@ -1228,26 +1256,26 @@ const MonthlySummary: React.FC = () => {
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
                               <LinearProgress
                                 variant="determinate"
-                                value={Math.min((totals.card_expenses / budgetLimit) * 100, 100)}
+                                value={Math.min((totalExpenses / budgetLimit) * 100, 100)}
                                 sx={{
                                   height: 4,
                                   borderRadius: 2,
                                   flex: 1,
                                   bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                                   '& .MuiLinearProgress-bar': {
-                                    bgcolor: totals.card_expenses > budgetLimit ? 'var(--n-error)' : 'var(--n-success)'
+                                    bgcolor: totalExpenses > budgetLimit ? 'var(--n-error)' : 'var(--n-success)'
                                   }
                                 }}
                               />
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: totals.card_expenses > budgetLimit ? 'var(--n-error)' : 'var(--n-success)', fontSize: '0.65rem' }}>
-                                {Math.round((totals.card_expenses / budgetLimit) * 100)}%
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: totalExpenses > budgetLimit ? 'var(--n-error)' : 'var(--n-success)', fontSize: '0.65rem' }}>
+                                {Math.round((totalExpenses / budgetLimit) * 100)}%
                               </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.65rem' }}>
-                                {totals.card_expenses > budgetLimit
-                                  ? t('summary.overBy', { amount: `₪${fmt(totals.card_expenses - budgetLimit)}` })
-                                  : t('summary.remainingLeft', { amount: `₪${fmt(budgetLimit - totals.card_expenses)}` })
+                                {totalExpenses > budgetLimit
+                                  ? t('summary.overBy', { amount: `₪${fmt(totalExpenses - budgetLimit)}` })
+                                  : t('summary.remainingLeft', { amount: `₪${fmt(budgetLimit - totalExpenses)}` })
                                 }
                               </Typography>
                             </Box>
@@ -1266,7 +1294,8 @@ const MonthlySummary: React.FC = () => {
                           </Button>
                         )}
                       </Box>
-                    )}
+                      );
+                    })()}
                   </Box>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>

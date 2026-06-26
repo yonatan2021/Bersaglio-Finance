@@ -43,6 +43,8 @@ interface ScreenContext {
     totalIncome: number;
     totalExpenses: number;
     creditCardExpenses: number;
+    debitCardExpenses?: number;
+    bankDirectExpenses?: number;
     categories: Array<{ name: string; value: number }>;
   };
   transactions?: Array<{

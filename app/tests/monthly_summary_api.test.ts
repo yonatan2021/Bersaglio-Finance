@@ -138,7 +138,8 @@ describe('Monthly Summary API Endpoint', () => {
 
             const [sql, params] = mockClient.query.mock.calls[0];
             // StartDate/EndDate are $1/$2, so LIMIT/OFFSET are $3/$4
-            expect(sql).toContain('ORDER BY ABS(SUM(t.price)) DESC, LOWER(TRIM(t.name)) ASC');
+            // Default sort for description groupBy is total_expenses
+            expect(sql).toContain('payment_method');
             expect(sql).toContain('LIMIT $3 OFFSET $4');
             expect(params).toContain(50);
             expect(params).toContain(0);
@@ -168,11 +169,12 @@ describe('Monthly Summary API Endpoint', () => {
             expect(params).toContain(20);
             expect(params).toContain(40);
 
-            // Verify response format
-            expect(mockRes.json).toHaveBeenCalledWith({
-                items: [{ description: 'Test' }],
-                total: 100
-            });
+            // Verify response format (includes backward compat fields)
+            const responseData = mockRes.json.mock.calls[0][0];
+            expect(responseData.total).toBe(100);
+            expect(responseData.items[0].description).toBe('Test');
+            expect(responseData.items[0]).toHaveProperty('card_expenses');
+            expect(responseData.items[0]).toHaveProperty('bank_expenses');
         });
     });
 
@@ -191,11 +193,12 @@ describe('Monthly Summary API Endpoint', () => {
                 last4digits: '1234',
                 transaction_count: 5,
                 bank_income: 1000,
-                bank_expenses: 500,
-                card_expenses: 200,
+                credit_expenses: 150,
+                debit_expenses: 50,
+                bank_direct_expenses: 300,
                 total_income: 1000,
-                total_outflow: 700,
-                net_balance: 300,
+                total_outflow: 500,
+                net_balance: 500,
                 bank_account_id: 1,
                 bank_account_nickname: 'My Bank',
                 bank_account_number: '123456',
@@ -218,14 +221,118 @@ describe('Monthly Summary API Endpoint', () => {
             expect(sql).toContain('co.balance_updated_at');
             expect(sql).toContain('COALESCE(ba.id, vc.id)');
 
-            expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
-                items: expect.arrayContaining([
-                    expect.objectContaining({
-                        balance: 5000,
-                        balance_updated_at: '2023-01-27T20:00:00Z'
-                    })
-                ])
-            }));
+            // Verify payment_method columns in SQL
+            expect(sql).toContain('payment_method');
+            expect(sql).toContain('credit_expenses');
+            expect(sql).toContain('debit_expenses');
+            expect(sql).toContain('bank_direct_expenses');
+
+            const responseData = mockRes.json.mock.calls[0][0];
+            const item = responseData.items[0];
+
+            // New fields present
+            expect(item.credit_expenses).toBe(150);
+            expect(item.debit_expenses).toBe(50);
+            expect(item.bank_direct_expenses).toBe(300);
+
+            // Backward compat fields computed
+            expect(item.card_expenses).toBe(200); // 150 + 50
+            expect(item.bank_expenses).toBe(300); // bank_direct_expenses
+
+            expect(item.balance).toBe(5000);
+            expect(item.balance_updated_at).toBe('2023-01-27T20:00:00Z');
+        });
+    });
+
+    describe('Payment Method Breakdown', () => {
+        it('should use payment_method column instead of transaction_type in queries', async () => {
+            mockReq = {
+                method: 'GET',
+                query: {
+                    startDate: '2023-01-01',
+                    endDate: '2023-01-31',
+                    groupBy: 'description'
+                }
+            };
+
+            mockClient.query.mockResolvedValue({
+                rowCount: 1,
+                rows: [{
+                    description: 'Grocery Store',
+                    category: 'Food',
+                    transaction_count: 3,
+                    amount: -300,
+                    bank_income: 0,
+                    credit_expenses: 200,
+                    debit_expenses: 100,
+                    bank_direct_expenses: 0,
+                    total_count: 1
+                }]
+            });
+
+            await handler(mockReq, mockRes);
+
+            const [sql] = mockClient.query.mock.calls[0];
+            // Should use payment_method, not transaction_type for expense breakdown
+            expect(sql).toContain("t.payment_method = 'credit'");
+            expect(sql).toContain("t.payment_method = 'debit'");
+            expect(sql).toContain("t.payment_method = 'bank_direct'");
+            expect(sql).not.toContain("t.transaction_type = 'credit_card'");
+            // transaction_type = 'bank' may still appear in reconciliation exclusion, that's fine
+            // But it should NOT appear in the expense/income CASE expressions
+            expect(sql).not.toContain("CASE WHEN t.transaction_type = 'bank'");
+
+            const responseData = mockRes.json.mock.calls[0][0];
+            const item = responseData.items[0];
+
+            // Debit expenses are separate from credit expenses
+            expect(item.credit_expenses).toBe(200);
+            expect(item.debit_expenses).toBe(100);
+            expect(item.bank_direct_expenses).toBe(0);
+
+            // Backward compat
+            expect(item.card_expenses).toBe(300); // credit + debit
+            expect(item.bank_expenses).toBe(0);   // bank_direct_expenses
+        });
+
+        it('should include 3-way breakdown in default monthly query', async () => {
+            mockReq = {
+                method: 'GET',
+                query: {
+                    startDate: '2023-01-01',
+                    endDate: '2023-01-31'
+                }
+            };
+
+            mockClient.query.mockResolvedValue({
+                rowCount: 1,
+                rows: [{
+                    month: '2023-01',
+                    vendor: 'visaCal',
+                    vendor_nickname: 'Visa Cal',
+                    bank_income: 5000,
+                    credit_expenses: 1000,
+                    debit_expenses: 500,
+                    bank_direct_expenses: 200,
+                    net_balance: 3300,
+                    total_count: 1
+                }]
+            });
+
+            await handler(mockReq, mockRes);
+
+            const [sql] = mockClient.query.mock.calls[0];
+            expect(sql).toContain("payment_method = 'credit'");
+            expect(sql).toContain("payment_method = 'debit'");
+            expect(sql).toContain("payment_method = 'bank_direct'");
+
+            const responseData = mockRes.json.mock.calls[0][0];
+            const item = responseData.items[0];
+            expect(item.credit_expenses).toBe(1000);
+            expect(item.debit_expenses).toBe(500);
+            expect(item.bank_direct_expenses).toBe(200);
+            expect(item.card_expenses).toBe(1500); // 1000 + 500
+            expect(item.bank_expenses).toBe(200);
         });
     });
 
@@ -251,10 +358,14 @@ describe('Monthly Summary API Endpoint', () => {
             expect(sql).toContain('GROUP BY COALESCE(NULLIF(t.category, \'\'), \'Uncategorized\')');
             expect(sql).toContain('ORDER BY SUM(t.price) ASC');
 
-            expect(mockRes.json).toHaveBeenCalledWith({
-                items: [{ category: 'Food', total: -150, count: 5, amount: -150 }],
-                total: 1
+            const responseData = mockRes.json.mock.calls[0][0];
+            expect(responseData.total).toBe(1);
+            expect(responseData.items[0]).toMatchObject({
+                category: 'Food', total: -150, count: 5, amount: -150
             });
+            // Backward compat fields present
+            expect(responseData.items[0]).toHaveProperty('card_expenses');
+            expect(responseData.items[0]).toHaveProperty('bank_expenses');
         });
     });
 });

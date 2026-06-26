@@ -20,9 +20,9 @@ const handler = createApiHandler({
 
     if (!effectiveSortBy) {
       if (groupBy === 'category') effectiveSortBy = 'total';
-      else if (groupBy === 'description') effectiveSortBy = 'card_expenses';
-      else if (groupBy === 'last4digits') effectiveSortBy = 'card_expenses';
-      else effectiveSortBy = 'card_expenses';
+      else if (groupBy === 'description') effectiveSortBy = 'total_expenses';
+      else if (groupBy === 'last4digits') effectiveSortBy = 'total_expenses';
+      else effectiveSortBy = 'total_expenses';
     }
 
     if (!effectiveSortOrder) {
@@ -100,6 +100,11 @@ const handler = createApiHandler({
         category: `LOWER(MAX(t.category)) ${dir}, LOWER(TRIM(t.name)) ASC`,
         count: `COUNT(DISTINCT (t.identifier, t.vendor)) ${dir}, LOWER(TRIM(t.name)) ASC`,
         transaction_count: `COUNT(DISTINCT (t.identifier, t.vendor)) ${dir}, LOWER(TRIM(t.name)) ASC`,
+        total_expenses: `(
+          COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
+          COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)
+        ) ${dir}, LOWER(TRIM(t.name)) ASC`,
         _default: `ABS(SUM(t.price)) ${dir}, LOWER(TRIM(t.name)) ASC`,
       },
       category: {
@@ -112,12 +117,15 @@ const handler = createApiHandler({
         name: `COALESCE(RIGHT(t.account_number, 4), 'Unknown')`,
         count: `COUNT(DISTINCT (t.identifier, t.vendor)) ${dir}, COALESCE(RIGHT(t.account_number, 4), 'Unknown') ASC`,
         transaction_count: `COUNT(DISTINCT (t.identifier, t.vendor)) ${dir}, COALESCE(RIGHT(t.account_number, 4), 'Unknown') ASC`,
+        total_expenses: `(
+          COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
+          COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)
+        ) ${dir}, COALESCE(RIGHT(t.account_number, 4), 'Unknown') ASC`,
         _default: `(
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0) +
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
-          COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
-          ), 0)
+          COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
+          COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) +
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)
         ) ${dir}, COALESCE(RIGHT(t.account_number, 4), 'Unknown') ASC`,
       },
       _default: {
@@ -139,11 +147,10 @@ const handler = createApiHandler({
           MAX(t.category) as category,
           COUNT(DISTINCT (t.identifier, t.vendor)) as transaction_count,
           COALESCE(SUM(t.price), 0)::numeric as amount,
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
-          COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
-          ), 0)::numeric as card_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as credit_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as debit_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_direct_expenses,
           COUNT(*) OVER() as total_count
         FROM transactions t
         ${credentialJoin}
@@ -160,11 +167,10 @@ const handler = createApiHandler({
           COALESCE(ct.type, 'expense') as category_type,
           COALESCE(SUM(t.price), 0)::numeric as total,
           COALESCE(SUM(t.price), 0)::numeric as amount,
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
-          COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
-          ), 0)::numeric as card_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as credit_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as debit_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_direct_expenses,
           COUNT(*)::integer as count,
           COUNT(*) OVER() as total_count
         FROM transactions t
@@ -179,19 +185,17 @@ const handler = createApiHandler({
         SELECT 
           COALESCE(RIGHT(t.account_number, 4), 'Unknown') as last4digits,
           COUNT(DISTINCT (t.identifier, t.vendor)) as transaction_count,
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
-          COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_expenses,
-          COALESCE(SUM(
-            CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
-          ), 0)::numeric as card_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as bank_income,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as credit_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as debit_expenses,
+          COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as bank_direct_expenses,
           COALESCE(SUM(CASE WHEN t.price > 0 THEN t.price ELSE 0 END), 0)::numeric as total_income,
           COALESCE(SUM(CASE WHEN t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)::numeric as total_outflow,
           (
-            COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) -
-            COALESCE(SUM(
-              CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
-            ), 0)
+            COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price > 0 THEN t.price ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0)
           )::numeric as net_balance,
           COALESCE(ba.id, vc.id) as bank_account_id,
           COALESCE(ba.nickname, co.custom_bank_account_nickname, vc.nickname) as bank_account_nickname,
@@ -218,11 +222,10 @@ const handler = createApiHandler({
             TO_CHAR(t.date, 'YYYY-MM') as month,
             t.vendor,
             vc.nickname as vendor_nickname,
-            COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price > 0 THEN t.price ELSE 0 END), 0) as bank_income,
-            COALESCE(SUM(CASE WHEN t.transaction_type = 'bank' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) as bank_expenses,
-            COALESCE(SUM(
-              CASE WHEN t.transaction_type = 'credit_card' THEN -t.price ELSE 0 END
-            ), 0) as card_expenses
+            COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price > 0 THEN t.price ELSE 0 END), 0) as bank_income,
+            COALESCE(SUM(CASE WHEN t.payment_method = 'credit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) as credit_expenses,
+            COALESCE(SUM(CASE WHEN t.payment_method = 'debit' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) as debit_expenses,
+            COALESCE(SUM(CASE WHEN t.payment_method = 'bank_direct' AND t.price < 0 THEN ABS(t.price) ELSE 0 END), 0) as bank_direct_expenses
           FROM transactions t
           ${credentialJoin}
           ${whereClause}
@@ -233,9 +236,10 @@ const handler = createApiHandler({
           vendor,
           vendor_nickname,
           bank_income::numeric as bank_income,
-          bank_expenses::numeric as bank_expenses,
-          card_expenses::numeric as card_expenses,
-          (bank_income - bank_expenses - card_expenses)::numeric as net_balance,
+          credit_expenses::numeric as credit_expenses,
+          debit_expenses::numeric as debit_expenses,
+          bank_direct_expenses::numeric as bank_direct_expenses,
+          (bank_income - credit_expenses - debit_expenses - bank_direct_expenses)::numeric as net_balance,
           COUNT(*) OVER() as total_count
         FROM monthly_data
         ORDER BY ${orderClause}
@@ -251,6 +255,9 @@ const handler = createApiHandler({
     const total = rows.length > 0 ? parseInt(rows[0].total_count, 10) || 0 : 0;
     const items = rows.map(r => {
       const { total_count, ...item } = r;
+      // Backward compat: compute card_expenses and bank_expenses from new fields
+      item.card_expenses = Number(item.credit_expenses || 0) + Number(item.debit_expenses || 0);
+      item.bank_expenses = Number(item.bank_direct_expenses || 0);
       return item;
     });
     return { items, total };

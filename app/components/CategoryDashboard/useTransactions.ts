@@ -27,6 +27,7 @@ export function useTransactions() {
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [favoritesOnly, setFavoritesOnly] = React.useState(false);
   const [sourceTypeFilter, setSourceTypeFilter] = React.useState<string>('');
+  const [serverSummary, setServerSummary] = React.useState<{ totalCount: number; totalExpenses: number; totalIncome: number; creditCardTotal: number; debitTotal: number; directTotal: number } | null>(null);
   const scrollThrottleRef = React.useRef(false);
 
   const fetchTransactionsWithRange = React.useCallback(async (
@@ -69,7 +70,11 @@ export function useTransactions() {
       const response = await fetch(url.toString());
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-      const transactionsData = await response.json();
+      const responseData = await response.json();
+      const transactionsData = responseData.transactions || responseData;
+      if (!isLoadMore && responseData.summary) {
+        setServerSummary(responseData.summary);
+      }
       const mappedTransactions = transactionsData.map((t: { category?: string;[key: string]: unknown }) => ({
         ...t,
         category: t.category || 'Unassigned',
@@ -142,7 +147,11 @@ export function useTransactions() {
 
       const response = await fetch(`/api/transactions?${queryParams}`);
       if (response.ok) {
-        const results = await response.json();
+        const responseData = await response.json();
+        const results = responseData.transactions || responseData;
+        if (!isLoadMore && responseData.summary) {
+          setServerSummary(responseData.summary);
+        }
         if (isLoadMore) {
           setTransactions(prev => [...prev, ...results]);
           pageRef.current = currentPage;
@@ -308,6 +317,7 @@ export function useTransactions() {
     favoritesOnly,
     setFavoritesOnly,
     sourceTypeFilter,
-    setSourceTypeFilter
+    setSourceTypeFilter,
+    serverSummary
   };
 }

@@ -92,47 +92,47 @@ const baseTheme: ThemeOptions = {
 const lightPalette: ThemeOptions['palette'] = {
     mode: 'light',
     primary: {
-        main: '#6366f1',
-        light: '#818cf8',
-        dark: '#4f46e5',
+        main: '#1a3354',
+        light: '#2a5070',
+        dark: '#132742',
     },
     secondary: {
-        main: '#71717a',
-        light: '#a1a1aa',
-        dark: '#52525b',
+        main: '#8a9bb5',
+        light: '#b0bdd0',
+        dark: '#627d98',
     },
     background: {
-        default: '#fafafa',
+        default: '#f8f9fb',
         paper: '#ffffff',
     },
     text: {
-        primary: '#09090b',
-        secondary: '#52525b',
+        primary: '#0b0f1a',
+        secondary: '#4b5563',
     },
-    divider: '#e4e4e7',
+    divider: '#e2e5ea',
 };
 
 const darkPalette: ThemeOptions['palette'] = {
     mode: 'dark',
     primary: {
-        main: '#6366f1',
-        light: '#818cf8',
-        dark: '#4f46e5',
+        main: '#3e6b8a',
+        light: '#627d98',
+        dark: '#2a5070',
     },
     secondary: {
-        main: '#a1a1aa',
-        light: '#d4d4d8',
-        dark: '#71717a',
+        main: '#9fb3c8',
+        light: '#bcccdc',
+        dark: '#8a9bb5',
     },
     background: {
-        default: '#09090b',
-        paper: '#18181b',
+        default: '#0b0f1a',
+        paper: '#111827',
     },
     text: {
-        primary: '#fafafa',
-        secondary: '#a1a1aa',
+        primary: '#f8f9fb',
+        secondary: '#9aa1ad',
     },
-    divider: '#27272a',
+    divider: '#1f2937',
 };
 
 export const buildTheme = (mode: Mode, direction: Direction = 'ltr') =>

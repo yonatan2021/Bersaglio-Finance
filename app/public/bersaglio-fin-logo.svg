@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Compass circle -->
+  <circle cx="32" cy="32" r="22" stroke="#1a3354" stroke-width="2.5" fill="none"/>
+  <!-- Cardinal tick marks -->
+  <line x1="32" y1="8" x2="32" y2="12" stroke="#1a3354" stroke-width="2" stroke-linecap="round"/>
+  <line x1="32" y1="52" x2="32" y2="56" stroke="#1a3354" stroke-width="2" stroke-linecap="round"/>
+  <line x1="8" y1="32" x2="12" y2="32" stroke="#1a3354" stroke-width="2" stroke-linecap="round"/>
+  <line x1="52" y1="32" x2="56" y2="32" stroke="#1a3354" stroke-width="2" stroke-linecap="round"/>
+  <!-- North needle (dark navy) -->
+  <polygon points="32,12 28,32 32,28 36,32" fill="#1a3354"/>
+  <!-- South needle (dark navy) -->
+  <polygon points="32,52 28,32 32,36 36,32" fill="#1a3354"/>
+  <!-- East needle (silver) -->
+  <polygon points="52,32 32,28 36,32 32,36" fill="#8a9bb5"/>
+  <!-- West needle (silver) -->
+  <polygon points="12,32 32,28 28,32 32,36" fill="#8a9bb5"/>
+  <!-- NE accent needle (silver highlight) -->
+  <polygon points="32,16 35,32 32,30" fill="#8a9bb5" opacity="0.6"/>
+  <!-- Center dot -->
+  <circle cx="32" cy="32" r="2.5" fill="#1a3354"/>
+</svg>

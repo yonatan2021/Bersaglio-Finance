@@ -18,6 +18,7 @@ const RecentTransactionsModule: React.FC = () => {
     } = useDateSelection();
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [summary, setSummary] = useState<{ totalExpenses: number; totalIncome: number; creditCardTotal: number; debitTotal: number; directTotal: number } | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(0);
@@ -46,15 +47,19 @@ const RecentTransactionsModule: React.FC = () => {
             const response = await fetch(`/api/transactions?${params.toString()}`);
             if (!response.ok) throw new Error('Failed to fetch transactions');
             const data = await response.json();
-
-            if (isLoadMore) {
-                setTransactions(prev => [...prev, ...data]);
-                setPage(currentPage);
-            } else {
-                setTransactions(data);
+            const txns = data.transactions || data;
+            if (!isLoadMore && data.summary) {
+                setSummary(data.summary);
             }
 
-            setHasMore(data.length === PAGE_SIZE);
+            if (isLoadMore) {
+                setTransactions(prev => [...prev, ...txns]);
+                setPage(currentPage);
+            } else {
+                setTransactions(txns);
+            }
+
+            setHasMore(txns.length === PAGE_SIZE);
         } catch (error) {
             logger.error('Error fetching recent transactions', error as Error);
         } finally {
@@ -133,6 +138,7 @@ const RecentTransactionsModule: React.FC = () => {
                     <>
                         <TransactionsTable
                             transactions={transactions}
+                            serverSummary={summary}
                             groupByDate={true}
                             disableWrapper={true}
                             hideActions={false}

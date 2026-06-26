@@ -298,7 +298,8 @@ const BreakdownView: React.FC = () => {
 
             const response = await fetch(url);
             if (!response.ok) throw new Error('Failed to fetch transactions');
-            const transactions = await response.json();
+            const responseData = await response.json();
+            const transactions = responseData.transactions || responseData;
 
             setModalData({
                 type: description,

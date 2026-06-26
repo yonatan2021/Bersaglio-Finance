@@ -1,5 +1,5 @@
 export const t = {
-    welcome: '👋 שלום! אני הבוט הפיננסי של Nudlers.\n\nבחר פעולה מהתפריט:',
+    welcome: '👋 שלום! אני הבוט הפיננסי של Bersaglio Fin.\n\nבחר פעולה מהתפריט:',
     menuStatus: '📊 סטטוס תקציב',
     menuRecent: '💳 עסקאות אחרונות',
     menuExpense: '➕ הוצאה חדשה',

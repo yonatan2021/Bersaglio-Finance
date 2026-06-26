@@ -51,8 +51,8 @@ const Footer: React.FC = () => {
             <FooterContainer maxWidth="xl">
                 <LogoSection>
                     <Image
-                        src="/nudlers-logo.svg"
-                        alt="Nudlers Logo"
+                        src="/bersaglio-fin-logo.svg"
+                        alt="Bersaglio Fin Logo"
                         width={20}
                         height={20}
                         style={{ objectFit: 'contain' }}
@@ -60,16 +60,14 @@ const Footer: React.FC = () => {
                     <Typography
                         variant="body2"
                         sx={{
-                            fontWeight: 700,
-                            letterSpacing: '-0.02em',
-                            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
+                            fontWeight: 400,
+                            letterSpacing: '0.01em',
+                            color: 'var(--n-primary)',
                             fontSize: '0.85rem',
-                            fontFamily: 'Inter, sans-serif'
+                            fontFamily: "'DM Serif Display', Georgia, serif"
                         }}
                     >
-                        Nudlers
+                        Bersaglio Fin
                     </Typography>
                 </LogoSection>
 

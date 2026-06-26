@@ -883,7 +883,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) => {
             {/* AI Provider */}
             <SettingSection>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <AutoAwesomeIcon sx={{ color: '#ec4899' }} />
+                <AutoAwesomeIcon sx={{ color: '#627d98' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {t('settings:ai.section')}
                 </Typography>
@@ -1442,7 +1442,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) => {
             {/* Vault Settings */}
             <SettingSection>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <LockIcon sx={{ color: '#818cf8' }} />
+                <LockIcon sx={{ color: '#3e6b8a' }} />
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                   {t('settings:vault.section')}
                 </Typography>
@@ -1714,11 +1714,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) => {
                           setConfirmNewPass('');
                         }}
                         sx={{
-                          borderColor: '#818cf8',
-                          color: '#818cf8',
+                          borderColor: '#3e6b8a',
+                          color: '#3e6b8a',
                           '&:hover': {
                             borderColor: 'var(--n-primary-500)',
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            backgroundColor: 'rgba(26, 51, 84, 0.1)',
                           },
                         }}
                       >
@@ -1788,9 +1788,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onClose }) => {
                         setChangingPassphrase(false);
                       }}
                       sx={{
-                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                        background: 'linear-gradient(135deg, #1a3354 0%, #132742 100%)',
                         '&:hover': {
-                          background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+                          background: 'linear-gradient(135deg, #132742 0%, #0d1b2e 100%)',
                         },
                         alignSelf: 'flex-start',
                       }}

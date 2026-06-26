@@ -8,7 +8,7 @@ export type ToolGroup = typeof TOOL_GROUPS[number];
 
 export function createMcpServer(groups?: ToolGroup[]) {
     const server = new McpServer({
-        name: "nudlers",
+        name: "bersaglio-fin",
         version: "1.0.0",
     });
 

@@ -95,7 +95,7 @@ describe('Transactions API - category_type field', () => {
 
         expect(mockRes.status).toHaveBeenCalledWith(200);
         const responseData = mockRes.json.mock.calls[0][0];
-        expect(responseData[0]).toHaveProperty('category_type', 'expense');
+        expect(responseData.transactions[0]).toHaveProperty('category_type', 'expense');
     });
 
     it('should default category_type to expense when category has no type mapping', async () => {
@@ -131,7 +131,7 @@ describe('Transactions API - category_type field', () => {
 
         expect(mockRes.status).toHaveBeenCalledWith(200);
         const responseData = mockRes.json.mock.calls[0][0];
-        expect(responseData[0].category_type).toBe('expense');
+        expect(responseData.transactions[0].category_type).toBe('expense');
     });
 
     it('should return income category_type when mapped as income', async () => {
@@ -167,7 +167,7 @@ describe('Transactions API - category_type field', () => {
 
         expect(mockRes.status).toHaveBeenCalledWith(200);
         const responseData = mockRes.json.mock.calls[0][0];
-        expect(responseData[0].category_type).toBe('income');
+        expect(responseData.transactions[0].category_type).toBe('income');
     });
 
     it('should preserve is_credit for backward compatibility alongside category_type', async () => {
@@ -203,9 +203,9 @@ describe('Transactions API - category_type field', () => {
 
         const responseData = mockRes.json.mock.calls[0][0];
         // is_credit based on price > 0 (backward compat)
-        expect(responseData[0].is_credit).toBe(true);
+        expect(responseData.transactions[0].is_credit).toBe(true);
         // category_type from the category_types table
-        expect(responseData[0].category_type).toBe('income');
+        expect(responseData.transactions[0].category_type).toBe('income');
     });
 
     it('should include category_type JOIN in the SQL query', async () => {
@@ -218,8 +218,8 @@ describe('Transactions API - category_type field', () => {
 
         await handler(mockReq, mockRes);
 
-        const sql = mockClient.query.mock.calls[0][0];
-        expect(sql).toContain('category_types ct');
-        expect(sql).toContain("COALESCE(ct.type, 'expense') as category_type");
+        const mainSql = mockClient.query.mock.calls[1][0];
+        expect(mainSql).toContain('category_types ct');
+        expect(mainSql).toContain("COALESCE(ct.type, 'expense') as category_type");
     });
 });

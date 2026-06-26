@@ -125,8 +125,8 @@ const QuickCategoryModal: React.FC<QuickCategoryModalProps> = ({
       if (!response.ok) {
         throw new Error('Failed to fetch transactions');
       }
-      const data = await response.json();
-      setTransactions(data);
+      const responseData = await response.json();
+      setTransactions(responseData.transactions || responseData);
     } catch (err) {
       logger.error('Error fetching transactions', err as Error);
       setTransactions([]);
@@ -477,8 +477,8 @@ const QuickCategoryModal: React.FC<QuickCategoryModalProps> = ({
                                 sx={{
                                   height: '20px',
                                   fontSize: '11px',
-                                  backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                  color: '#8b5cf6'
+                                  backgroundColor: 'rgba(42, 80, 112, 0.1)',
+                                  color: '#2a5070'
                                 }}
                               />
                             )}

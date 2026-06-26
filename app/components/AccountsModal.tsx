@@ -977,7 +977,7 @@ export default function AccountsModal({ open, onClose }: AccountsModalProps) {
             </Box>
           ) : isAdding || isEditing ? (
             <Box sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, color: isEditing ? '#8b5cf6' : 'var(--n-info)' }}>
+              <Typography variant="h6" sx={{ mb: 2, color: isEditing ? '#2a5070' : 'var(--n-info)' }}>
                 {isEditing ? t('accounts.editAccount') : t('accounts.addAccountTitle')}
               </Typography>
               <TextField
@@ -1092,9 +1092,9 @@ export default function AccountsModal({ open, onClose }: AccountsModalProps) {
                   variant="contained"
                   onClick={isEditing ? handleUpdate : handleAdd}
                   sx={{
-                    backgroundColor: isEditing ? '#8b5cf6' : 'var(--n-info)',
+                    backgroundColor: isEditing ? '#2a5070' : 'var(--n-info)',
                     '&:hover': {
-                      backgroundColor: isEditing ? '#7c3aed' : '#2563eb',
+                      backgroundColor: isEditing ? '#1a3354' : '#2563eb',
                     },
                   }}
                 >
@@ -1118,8 +1118,8 @@ export default function AccountsModal({ open, onClose }: AccountsModalProps) {
               {/* Credit Card Accounts Section */}
               <AccountSection>
                 <SectionHeader>
-                  <CreditCardIcon sx={{ color: '#8b5cf6', fontSize: '24px' }} />
-                  <Typography variant="h6" sx={{ color: '#8b5cf6' }}>
+                  <CreditCardIcon sx={{ color: '#2a5070', fontSize: '24px' }} />
+                  <Typography variant="h6" sx={{ color: '#2a5070' }}>
                     {t('accounts.creditCardAccountsCount', { count: creditAccounts.length })}
                   </Typography>
                 </SectionHeader>

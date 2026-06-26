@@ -107,8 +107,18 @@ export interface Transaction {
   category_type?: string;
 }
 
+export interface ServerSummary {
+  totalCount: number;
+  totalExpenses: number;
+  totalIncome: number;
+  creditCardTotal: number;
+  debitTotal: number;
+  directTotal: number;
+}
+
 export interface TransactionsTableProps {
   transactions: Transaction[];
+  serverSummary?: ServerSummary | null;
   isLoading?: boolean;
   onDelete?: (transaction: Transaction) => void;
   onUpdate?: (transaction: Transaction, updates: Partial<Transaction>) => void;
@@ -125,6 +135,7 @@ export interface TransactionsTableProps {
 
 const TransactionsTable: React.FC<TransactionsTableProps> = ({
   transactions,
+  serverSummary,
   isLoading,
   onDelete,
   onUpdate,
@@ -315,7 +326,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
 
   const content = (
     <Box sx={{ width: '100%' }}>
-      {transactions.length > 0 && <TransactionsSummaryBar transactions={transactions} />}
+      {transactions.length > 0 && <TransactionsSummaryBar transactions={transactions} serverSummary={serverSummary} />}
       {isMobile ? (
         <MobileSortableTable
           sortOptions={mobileSortOptions}
@@ -812,13 +823,25 @@ const TransactionMobileCardContent = ({
 
 interface TransactionsSummaryBarProps {
   transactions: Transaction[];
+  serverSummary?: ServerSummary | null;
 }
 
-const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transactions }) => {
+const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transactions, serverSummary }) => {
   const { t } = useTranslation('tx');
   const theme = useTheme();
 
   const stats = React.useMemo(() => {
+    if (serverSummary) {
+      return {
+        totalExpenses: serverSummary.totalExpenses,
+        totalIncome: serverSummary.totalIncome,
+        net: serverSummary.totalIncome - serverSummary.totalExpenses,
+        creditCardTotal: serverSummary.creditCardTotal,
+        debitTotal: serverSummary.debitTotal,
+        directTotal: serverSummary.directTotal,
+      };
+    }
+
     let totalExpenses = 0;
     let totalIncome = 0;
     let creditCardTotal = 0;
@@ -829,7 +852,7 @@ const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transac
       const amount = Math.abs(tx.price);
       const catType = tx.category_type || 'expense';
       if (catType === 'transfer') return;
-      if (catType === 'income') {
+      if (tx.price > 0 || catType === 'income') {
         totalIncome += amount;
       } else {
         totalExpenses += amount;
@@ -840,7 +863,7 @@ const TransactionsSummaryBar: React.FC<TransactionsSummaryBarProps> = ({ transac
     });
 
     return { totalExpenses, totalIncome, net: totalIncome - totalExpenses, creditCardTotal, debitTotal, directTotal };
-  }, [transactions]);
+  }, [transactions, serverSummary]);
 
   return (
     <Box sx={{

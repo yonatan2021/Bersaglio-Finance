@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="60%" stop-color="#a855f7"/>
-      <stop offset="100%" stop-color="#ec4899"/>
-    </linearGradient>
-  </defs>
-  <!-- Background -->
-  <rect width="32" height="32" rx="7" fill="#16161f"/>
-  <!-- Chart bars -->
-  <rect x="6" y="18" width="5" height="8" rx="1.5" fill="url(#g)"/>
-  <rect x="13.5" y="13" width="5" height="13" rx="1.5" fill="url(#g)"/>
-  <rect x="21" y="7" width="5" height="19" rx="1.5" fill="url(#g)"/>
+  <rect width="32" height="32" rx="7" fill="#1a3354"/>
+  <!-- Compass circle -->
+  <circle cx="16" cy="16" r="10" stroke="#ffffff" stroke-width="1.2" fill="none" opacity="0.3"/>
+  <!-- North needle (white) -->
+  <polygon points="16,5 14,16 16,14 18,16" fill="#ffffff"/>
+  <!-- South needle (silver) -->
+  <polygon points="16,27 14,16 16,18 18,16" fill="#8a9bb5"/>
+  <!-- East needle (silver) -->
+  <polygon points="27,16 16,14 18,16 16,18" fill="#8a9bb5" opacity="0.7"/>
+  <!-- West needle (white) -->
+  <polygon points="5,16 16,14 14,16 16,18" fill="#ffffff" opacity="0.7"/>
+  <!-- Center dot -->
+  <circle cx="16" cy="16" r="1.5" fill="#ffffff"/>
 </svg>

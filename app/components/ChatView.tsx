@@ -402,12 +402,12 @@ const ChatView: React.FC = () => {
                                 width: 80,
                                 height: 80,
                                 borderRadius: '24px',
-                                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                background: 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 mb: 3,
-                                boxShadow: '0 8px 24px rgba(99, 102, 241, 0.2)'
+                                boxShadow: '0 8px 24px rgba(26, 51, 84, 0.2)'
                             }}>
                                 <ForumIcon sx={{ fontSize: 40, color: 'white' }} />
                             </Box>
@@ -452,7 +452,7 @@ const ChatView: React.FC = () => {
                                         borderRadius: '10px',
                                         background: msg.role === 'user'
                                             ? 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)'
-                                            : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                            : 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -528,10 +528,10 @@ const ChatView: React.FC = () => {
                                     width: 48,
                                     height: 48,
                                     borderRadius: '14px',
-                                    background: inputValue.trim() && !isLoading ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' : 'rgba(0,0,0,0.05)',
+                                    background: inputValue.trim() && !isLoading ? 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)' : 'rgba(0,0,0,0.05)',
                                     color: 'white',
                                     '&:hover': {
-                                        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                                        background: 'linear-gradient(135deg, #132742 0%, #1a3354 100%)',
                                         transform: 'translateY(-2px)'
                                     },
                                     '&.Mui-disabled': {

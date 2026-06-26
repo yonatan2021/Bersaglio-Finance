@@ -25,7 +25,7 @@ export default async function handler(
         const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/releases/latest`, {
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'Nudlers-App'
+                'User-Agent': 'BersaglioFin-App'
             }
         });
 

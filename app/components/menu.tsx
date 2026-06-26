@@ -76,13 +76,10 @@ const StyledAppBar = styled(AppBar)(({ }) => ({
 }));
 
 const Logo = styled(Typography)({
-  fontFamily: "Inter, Outfit, sans-serif",
-  fontWeight: 700,
-  letterSpacing: "-0.04em",
-  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%)',
-  WebkitBackgroundClip: 'text',
-  WebkitTextFillColor: 'transparent',
-  backgroundClip: 'text',
+  fontFamily: "'DM Serif Display', Georgia, serif",
+  fontWeight: 400,
+  letterSpacing: "0.01em",
+  color: 'var(--n-primary)',
   textDecoration: "none",
   cursor: "pointer",
   fontSize: '1.25rem',
@@ -91,8 +88,8 @@ const Logo = styled(Typography)({
   gap: '8px',
   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   '&:hover': {
-    transform: 'translateY(-2px)',
-    filter: 'brightness(1.2)',
+    transform: 'translateY(-1px)',
+    opacity: 0.85,
   },
 });
 
@@ -351,8 +348,8 @@ function ResponsiveAppBar({ currentView = 'summary', onViewChange }: ResponsiveA
               }}
             >
               <Image
-                src="/nudlers-logo.svg"
-                alt="Nudlers Logo"
+                src="/bersaglio-fin-logo.svg"
+                alt="Bersaglio Fin Logo"
                 width={32}
                 height={32}
                 style={{
@@ -361,7 +358,7 @@ function ResponsiveAppBar({ currentView = 'summary', onViewChange }: ResponsiveA
                   objectFit: 'contain'
                 }}
               />
-              Nudlers
+              Bersaglio Fin
             </Logo>
 
             <Box sx={{ flexGrow: 1 }} />
@@ -371,11 +368,11 @@ function ResponsiveAppBar({ currentView = 'summary', onViewChange }: ResponsiveA
               <IconButton
                 onClick={toggleAI}
                 sx={{
-                  color: isAIOpen ? '#8b5cf6' : 'text.primary',
-                  background: isAIOpen ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                  color: isAIOpen ? '#2a5070' : 'text.primary',
+                  background: isAIOpen ? 'rgba(42, 80, 112, 0.1)' : 'transparent',
                   transition: 'all 0.2s',
                   '&:hover': {
-                    background: 'rgba(139, 92, 246, 0.2)',
+                    background: 'rgba(42, 80, 112, 0.2)',
                     transform: 'scale(1.1)'
                   }
                 }}
@@ -406,7 +403,7 @@ function ResponsiveAppBar({ currentView = 'summary', onViewChange }: ResponsiveA
 
             {/* Mobile Status Indicators */}
             <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' }, justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-              <IconButton onClick={toggleAI} sx={{ color: isAIOpen ? '#8b5cf6' : 'text.primary' }}>
+              <IconButton onClick={toggleAI} sx={{ color: isAIOpen ? '#2a5070' : 'text.primary' }}>
                 <AutoAwesomeIcon />
               </IconButton>
               <VersionIndicator />

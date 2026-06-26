@@ -275,6 +275,44 @@ const getTransactions = createApiHandler({
 
         const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
+        // 5b. Server-side summary (runs before LIMIT/OFFSET are added to params)
+        const summaryParams = [...params];
+        const summaryFromClause = `
+          FROM transactions t
+          LEFT JOIN card_ownership co ON t.vendor = co.vendor AND t.account_number = co.account_number
+          LEFT JOIN vendor_credentials vc ON co.credential_id = vc.id
+          LEFT JOIN vendor_credentials linked_ba ON co.linked_bank_account_id = linked_ba.id
+          LEFT JOIN vendor_credentials ba ON ba.id = ${bankAccountParamIndex ? `$${bankAccountParamIndex}` : 'NULL'}
+          LEFT JOIN card_vendors cv ON RIGHT(t.account_number, 4) = cv.last4_digits AND t.transaction_type = 'credit_card'
+          LEFT JOIN transaction_reconciliations tr ON t.identifier = tr.bank_identifier AND t.vendor = tr.bank_vendor AND tr.status = 'approved'
+          LEFT JOIN transactions cc ON tr.cc_identifier = cc.identifier AND tr.cc_vendor = cc.vendor
+          LEFT JOIN category_types ct ON COALESCE(cc.category, t.category) = ct.category
+        `;
+        const summarySql = `
+          SELECT
+            COUNT(*) as total_count,
+            COALESCE(SUM(ABS(t.price)) FILTER (WHERE t.price < 0 AND COALESCE(ct.type, 'expense') != 'transfer'), 0) as total_expenses,
+            COALESCE(SUM(t.price) FILTER (WHERE t.price > 0 AND COALESCE(ct.type, 'expense') != 'transfer'), 0) as total_income,
+            COALESCE(SUM(ABS(t.price)) FILTER (WHERE t.price < 0 AND COALESCE(ct.type, 'expense') != 'transfer'
+              AND t.transaction_type = 'credit_card' AND (cv.is_debit IS NULL OR cv.is_debit = false)), 0) as credit_total,
+            COALESCE(SUM(ABS(t.price)) FILTER (WHERE t.price < 0 AND COALESCE(ct.type, 'expense') != 'transfer'
+              AND t.transaction_type = 'credit_card' AND cv.is_debit = true), 0) as debit_total,
+            COALESCE(SUM(ABS(t.price)) FILTER (WHERE t.price < 0 AND COALESCE(ct.type, 'expense') != 'transfer'
+              AND t.transaction_type = 'bank'), 0) as direct_total
+          ${summaryFromClause}
+          ${whereClause}
+        `;
+        const summaryResult = await client.query(summarySql, summaryParams);
+        const summaryRow = summaryResult.rows[0] || {};
+        req._summary = {
+            totalCount: parseInt(summaryRow.total_count, 10) || 0,
+            totalExpenses: parseFloat(summaryRow.total_expenses) || 0,
+            totalIncome: parseFloat(summaryRow.total_income) || 0,
+            creditCardTotal: parseFloat(summaryRow.credit_total) || 0,
+            debitTotal: parseFloat(summaryRow.debit_total) || 0,
+            directTotal: parseFloat(summaryRow.direct_total) || 0,
+        };
+
         // 6. Sorting
         const validSortColumns = ['name', 'price', 'date', 'category', 'account_number', 'vendor', 'processed_date'];
         const sortCol = validSortColumns.includes(sortBy) ? sortBy : 'date';
@@ -393,7 +431,7 @@ const getTransactions = createApiHandler({
             const allMonths = [...new Set([...transactionMonths, ...advanceMonths])];
             return allMonths.sort((a, b) => b.localeCompare(a));
         }
-        return result.rows.map(row => ({
+        const transactions = result.rows.map(row => ({
             ...row,
             card6_digits: row.card6_digits_encrypted ? safeDecrypt(row.card6_digits_encrypted) : null,
             card6_digits_encrypted: undefined,
@@ -402,6 +440,7 @@ const getTransactions = createApiHandler({
             is_credit: row.price > 0,
             category_type: row.category_type
         }));
+        return { transactions, summary: req._summary };
     }
 });
 

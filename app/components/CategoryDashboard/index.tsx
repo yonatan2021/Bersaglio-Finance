@@ -58,7 +58,8 @@ const CategoryDashboard: React.FC = () => {
     favoritesOnly,
     setFavoritesOnly,
     sourceTypeFilter,
-    setSourceTypeFilter
+    setSourceTypeFilter,
+    serverSummary
   } = useTransactions();
 
   const handleYearChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -212,6 +213,7 @@ const CategoryDashboard: React.FC = () => {
           </Box>
           <TransactionsTable
             transactions={transactions}
+            serverSummary={serverSummary}
             isLoading={loadingTransactions}
             onDelete={handleDeleteTransaction}
             onUpdate={handleUpdateTransaction}

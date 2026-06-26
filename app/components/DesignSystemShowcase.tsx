@@ -5,11 +5,11 @@ const DesignSystemShowcase: React.FC = () => {
     return (
         <Box sx={{ p: 4 }}>
             <Typography variant="h2" gutterBottom className="gradient-text">
-                Nudlers Design System
+                Bersaglio Fin Design System
             </Typography>
             <Typography variant="body1" sx={{ mb: 6, color: 'text.secondary', maxWidth: '800px' }}>
-                A premium, modern design system built with Zinc and Indigo tones,
-                leveraging glassmorphism and subtle micro-interactions to create a
+                A premium design system built with navy and silver tones,
+                combining precision and clarity for a
                 world-class financial experience.
             </Typography>
             <Grid container spacing={4}>

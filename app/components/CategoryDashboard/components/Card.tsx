@@ -350,22 +350,22 @@ const Card: React.FC<CardProps> = ({
                   }}
                   style={{
                     background: 'rgba(139, 92, 246, 0.1)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    border: '1px solid rgba(42, 80, 112, 0.3)',
                     borderRadius: '6px',
                     padding: '2px 8px',
                     fontSize: '10px',
                     fontWeight: 600,
-                    color: '#8b5cf6',
+                    color: '#2a5070',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
-                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                    e.currentTarget.style.background = 'rgba(42, 80, 112, 0.2)';
+                    e.currentTarget.style.borderColor = 'rgba(42, 80, 112, 0.5)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                    e.currentTarget.style.background = 'rgba(42, 80, 112, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(42, 80, 112, 0.3)';
                   }}
                 >
                   {t('tx:card.editBudget')}
@@ -386,13 +386,13 @@ const Card: React.FC<CardProps> = ({
             }}
             style={{
               width: '100%',
-              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)',
-              border: '1px dashed rgba(139, 92, 246, 0.4)',
+              background: 'linear-gradient(135deg, rgba(42, 80, 112, 0.1) 0%, rgba(42, 80, 112, 0.05) 100%)',
+              border: '1px dashed rgba(42, 80, 112, 0.4)',
               borderRadius: '12px',
               padding: '10px 16px',
               fontSize: '12px',
               fontWeight: 600,
-              color: '#8b5cf6',
+              color: '#2a5070',
               cursor: 'pointer',
               transition: 'all 0.3s ease',
               display: 'flex',
@@ -401,12 +401,12 @@ const Card: React.FC<CardProps> = ({
               gap: '6px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(42, 80, 112, 0.2) 0%, rgba(42, 80, 112, 0.1) 100%)';
               e.currentTarget.style.borderStyle = 'solid';
               e.currentTarget.style.transform = 'scale(1.02)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%)';
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(42, 80, 112, 0.1) 0%, rgba(42, 80, 112, 0.05) 100%)';
               e.currentTarget.style.borderStyle = 'dashed';
               e.currentTarget.style.transform = 'scale(1)';
             }}

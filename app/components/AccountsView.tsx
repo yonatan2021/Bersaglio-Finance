@@ -327,9 +327,9 @@ const AccountsView: React.FC = () => {
                                         textTransform: 'none',
                                         background: isVaultLocked
                                             ? alpha(theme.palette.text.disabled, 0.1)
-                                            : 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                                        boxShadow: isVaultLocked ? 'none' : '0 4px 15px rgba(99, 102, 241, 0.3)',
-                                        '&:hover': { background: isVaultLocked ? 'none' : 'linear-gradient(135deg, #4f46e5 0%, #9333ea 100%)' }
+                                            : 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)',
+                                        boxShadow: isVaultLocked ? 'none' : '0 4px 15px rgba(26, 51, 84, 0.3)',
+                                        '&:hover': { background: isVaultLocked ? 'none' : 'linear-gradient(135deg, #132742 0%, #1a3354 100%)' }
                                     }}
                                 >
                                     {t('accounts.addConnection')}
@@ -390,7 +390,7 @@ const AccountsView: React.FC = () => {
                         {/* Credit Cards Section */}
                         <Box sx={{ mb: 6 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-                                <CreditCardIcon sx={{ color: '#8b5cf6' }} />
+                                <CreditCardIcon sx={{ color: '#2a5070' }} />
                                 <Typography variant="h5" sx={{
                                     fontWeight: 700
                                 }}>{t('accounts.creditCards')}</Typography>
@@ -546,7 +546,7 @@ const AccountsView: React.FC = () => {
                         sx={{
                             borderRadius: '12px',
                             px: 4,
-                            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                            background: 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)',
                         }}
                     >
                         {isEditing ? t('accounts.actions.saveChanges') : t('accounts.actions.connect')}

@@ -198,8 +198,8 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
         `/api/transactions?description=${encodeURIComponent(description)}&uncategorizedOnly=true`
       );
       if (!response.ok) throw new Error(t('categoryMgmt:errors.failedToFetchTransactions'));
-      const data = await response.json();
-      setQuickTransactions(data);
+      const responseData = await response.json();
+      setQuickTransactions(responseData.transactions || responseData);
     } catch (error) {
       logger.error('Error fetching transactions', error, { description });
       setQuickTransactions([]);

@@ -23,7 +23,7 @@ function verifyAuth(req) {
   return false;
 }
 
-const SYSTEM_PROMPT = `You are a smart financial analyst for "Nudlers" expense tracker. You have direct access to the user's transaction database through function calls.
+const SYSTEM_PROMPT = `You are a smart financial analyst for "Bersaglio Fin" expense tracker. You have direct access to the user's transaction database through function calls.
 
 CRITICAL RULES:
 1. ALWAYS call functions to get real data before answering questions about spending, transactions, or finances

@@ -85,7 +85,7 @@ export async function notifyAppStartedWithLockedVault(opts = {}) {
         month: '2-digit',
         year: 'numeric',
     });
-    const body = `🔒 Nudlers — האפליקציה הופעלה מחדש\nהכספת נעולה ומחכה לפתיחה\n${time}`;
+    const body = `🔒 Bersaglio Fin — האפליקציה הופעלה מחדש\nהכספת נעולה ומחכה לפתיחה\n${time}`;
 
     const dispatch = await sendNotification({
         body,

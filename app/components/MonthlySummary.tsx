@@ -827,7 +827,8 @@ const MonthlySummary: React.FC = () => {
         throw new Error('Failed to fetch transactions');
       }
 
-      const transactions = await response.json();
+      const responseData = await response.json();
+      const transactions = responseData.transactions || responseData;
       // Filter to only credit card transactions (not Bank)
       const cardTransactions = transactions.filter((t: BankCheckTransaction) => !isBankTransaction(t));
 
@@ -894,7 +895,8 @@ const MonthlySummary: React.FC = () => {
         throw new Error('Failed to fetch transactions');
       }
 
-      const transactions = await response.json();
+      const responseData = await response.json();
+      const transactions = responseData.transactions || responseData;
 
       // Filter: Show ONLY bank transactions (scraped from bank)
       const bankTransactions = transactions.filter((t: BankCheckTransaction) => isBankTransaction(t));
@@ -946,7 +948,8 @@ const MonthlySummary: React.FC = () => {
         throw new Error('Failed to fetch transactions');
       }
 
-      const transactions = await response.json();
+      const responseData = await response.json();
+      const transactions = responseData.transactions || responseData;
 
       // Filter: Show ONLY Credit Card transactions (Exclude bank self-txns)
       let ccTransactions = transactions.filter((t: BankCheckTransaction) => !isBankTransaction(t));
@@ -1001,7 +1004,8 @@ const MonthlySummary: React.FC = () => {
         throw new Error('Failed to fetch transactions');
       }
 
-      const transactions = await response.json();
+      const responseData = await response.json();
+      const transactions = responseData.transactions || responseData;
 
       // Determine if it's a bank account for the modal title
       const cardInfo = cardSummary.find(c => c.last4digits === last4digits);
@@ -1321,11 +1325,11 @@ const MonthlySummary: React.FC = () => {
                       fontWeight: 700,
                       fontSize: '0.7rem',
                       py: 0,
-                      color: '#8b5cf6',
-                      borderColor: 'rgba(139, 92, 246, 0.3)',
+                      color: '#2a5070',
+                      borderColor: 'rgba(42, 80, 112, 0.3)',
                       '&:hover': {
-                        background: 'rgba(139, 92, 246, 0.05)',
-                        borderColor: '#8b5cf6'
+                        background: 'rgba(42, 80, 112, 0.05)',
+                        borderColor: '#2a5070'
                       }
                     }}
                     variant="outlined"
@@ -1777,7 +1781,8 @@ const MonthlySummary: React.FC = () => {
 
                       const response = await fetch(`/api/transactions?${queryParams}`);
                       if (response.ok) {
-                        const results = await response.json();
+                        const responseData = await response.json();
+                        const results = responseData.transactions || responseData;
                         setModalData({
                           type: t('summary.modalTitleCategory', { name: category }),
                           data: results

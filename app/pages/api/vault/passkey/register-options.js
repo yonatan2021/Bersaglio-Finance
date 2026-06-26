@@ -5,7 +5,7 @@ import logger from '../../../../utils/logger.js';
 
 import { getRpID } from './utils';
 
-const rpName = 'Nudlers Finance';
+const rpName = 'Bersaglio Fin';
 
 export default async function handler(req, res) {
     if (req.method !== 'GET') {

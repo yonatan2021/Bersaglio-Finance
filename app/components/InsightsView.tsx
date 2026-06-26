@@ -47,7 +47,7 @@ interface ListResponse {
 const TYPE_META: Record<AnomalyType, { icon: React.ReactNode; tone: string }> = {
     price_hike: { icon: <TrendingUpIcon fontSize="small" />, tone: 'var(--n-warning)' },
     new_recurring: { icon: <AutorenewIcon fontSize="small" />, tone: 'var(--n-primary-500)' },
-    category_spike: { icon: <LocalFireDepartmentIcon fontSize="small" />, tone: '#ec4899' },
+    category_spike: { icon: <LocalFireDepartmentIcon fontSize="small" />, tone: '#627d98' },
 };
 
 const SEVERITY_TONE: Record<Severity, string> = {

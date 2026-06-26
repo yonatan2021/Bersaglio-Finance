@@ -153,7 +153,7 @@ async function setupBotProfile(bot: Bot<BotContext>): Promise<void> {
     try {
         await bot.api.setMyCommands(BOT_COMMANDS);
         await bot.api.setMyDescription(
-            'הבוט הפיננסי של Nudlers 💰\nמעקב הוצאות, תקציבים וסנכרון בנקים ישראליים'
+            'הבוט הפיננסי של Bersaglio Fin 💰\nמעקב הוצאות, תקציבים וסנכרון בנקים ישראליים'
         );
         await bot.api.setMyShortDescription('מעקב הוצאות ותקציבים');
         logger.info('[telegram-bot] Bot profile updated');

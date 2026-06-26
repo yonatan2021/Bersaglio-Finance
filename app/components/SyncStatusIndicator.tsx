@@ -133,7 +133,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ onClick }) =>
 
   // Update browser tab title based on sync status
   useEffect(() => {
-    const originalTitle = 'Nudlers';
+    const originalTitle = 'Bersaglio Fin';
     if (status?.syncHealth === 'syncing') {
       document.title = t('sync:indicator.tabSyncing', { title: originalTitle });
     } else {

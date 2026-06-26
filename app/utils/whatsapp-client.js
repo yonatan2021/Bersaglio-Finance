@@ -120,7 +120,7 @@ async function buildSock() {
         // Baileys requires a Pino-shaped logger (debug/info/warn/error/trace
         // + child()). Our app logger is Pino so it satisfies the contract.
         logger,
-        browser: Browsers ? Browsers.appropriate?.('Nudlers') ?? Browsers.macOS?.('Nudlers') ?? ['Nudlers', 'Safari', '1.0'] : ['Nudlers', 'Safari', '1.0'],
+        browser: Browsers ? Browsers.appropriate?.('Bersaglio Fin') ?? Browsers.macOS?.('Bersaglio Fin') ?? ['Bersaglio Fin', 'Safari', '1.0'] : ['Bersaglio Fin', 'Safari', '1.0'],
         // We send only — never read. Skipping history sync keeps memory
         // small and avoids the "syncing messages..." stall on reconnect.
         syncFullHistory: false,

@@ -329,10 +329,10 @@ export default function ScrapeReport({ report, summary }: ScrapeReportProps) {
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, mb: 3 }}>
                 <Paper elevation={0} sx={{ p: 1.5, bgcolor: theme.palette.mode === 'dark' ? 'rgba(168, 85, 247, 0.05)' : '#faf5ff', border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#f3e8ff'}`, borderRadius: 3, textAlign: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
-                        <StorageIcon sx={{ fontSize: 16, color: theme.palette.mode === 'dark' ? '#a855f7' : '#6b21a8' }} />
-                        <Typography variant="h6" sx={{ color: theme.palette.mode === 'dark' ? '#a855f7' : '#6b21a8', fontWeight: 700 }}>{stats.cachedCategories || 0}</Typography>
+                        <StorageIcon sx={{ fontSize: 16, color: theme.palette.mode === 'dark' ? '#8a9bb5' : '#1a3354' }} />
+                        <Typography variant="h6" sx={{ color: theme.palette.mode === 'dark' ? '#8a9bb5' : '#1a3354', fontWeight: 700 }}>{stats.cachedCategories || 0}</Typography>
                     </Box>
-                    <Typography variant="caption" sx={{ color: theme.palette.mode === 'dark' ? '#a855f7' : '#6b21a8', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: 0.5 }}>{t('scrape:report.stats.fromCache')}</Typography>
+                    <Typography variant="caption" sx={{ color: theme.palette.mode === 'dark' ? '#8a9bb5' : '#1a3354', fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: 0.5 }}>{t('scrape:report.stats.fromCache')}</Typography>
                 </Paper>
                 <Paper elevation={0} sx={{ p: 1.5, bgcolor: theme.palette.mode === 'dark' ? 'rgba(14, 165, 233, 0.05)' : '#f0f9ff', border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(14, 165, 233, 0.2)' : '#e0f2fe'}`, borderRadius: 3, textAlign: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>

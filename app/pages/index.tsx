@@ -7,7 +7,7 @@ const Index: React.FC = () => {
   return (
     <Layout>
       <Head>
-        <title>Nudlers</title>
+        <title>Bersaglio Fin</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <CategoryDashboard />

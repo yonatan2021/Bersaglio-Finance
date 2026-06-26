@@ -73,8 +73,8 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            expect(mockClient.query).toHaveBeenCalledTimes(1);
-            const [sql, params] = mockClient.query.mock.calls[0];
+            expect(mockClient.query).toHaveBeenCalledTimes(2);
+            const [sql, params] = mockClient.query.mock.calls[1];
 
             // Should NOT have parameterized WHERE filter for transaction_type
             expect(sql).not.toMatch(/t\.transaction_type = \$/);
@@ -93,7 +93,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql, params] = mockClient.query.mock.calls[0];
+            const [sql, params] = mockClient.query.mock.calls[1];
             // Check for direct bank filter logic
             expect(sql).toContain("t.transaction_type = $3");
             expect(params).toEqual(['2023-01-01', '2023-01-31', 'bank', 100, 0]);
@@ -108,7 +108,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql, params] = mockClient.query.mock.calls[0];
+            const [sql, params] = mockClient.query.mock.calls[1];
             // Check for direct credit card filter logic
             expect(sql).toContain("t.transaction_type = $3");
             expect(params).toEqual(['2023-01-01', '2023-01-31', 'credit_card', 100, 0]);
@@ -123,7 +123,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql, params] = mockClient.query.mock.calls[0];
+            const [sql, params] = mockClient.query.mock.calls[1];
             // 'all' should result in no parameterized WHERE filter for transaction_type
             expect(sql).not.toMatch(/t\.transaction_type = \$/);
             expect(params).toEqual(['2023-01-01', '2023-01-31', 100, 0]);
@@ -142,7 +142,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql, params] = mockClient.query.mock.calls[0];
+            const [sql, params] = mockClient.query.mock.calls[1];
 
             // Check for presence of conditions
             expect(sql).toContain('date >= $1::date');
@@ -162,7 +162,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql] = mockClient.query.mock.calls[0];
+            const [sql] = mockClient.query.mock.calls[1];
             expect(sql).toContain('ORDER BY t.date DESC');
         });
 
@@ -180,7 +180,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql] = mockClient.query.mock.calls[0];
+            const [sql] = mockClient.query.mock.calls[1];
             expect(sql).toContain('ORDER BY t.price ASC');
         });
 
@@ -197,7 +197,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql, params] = mockClient.query.mock.calls[0];
+            const [sql, params] = mockClient.query.mock.calls[1];
             expect(sql).toContain('COALESCE(cc.category, t.category) = $3');
             expect(params).toContain('Food');
         });
@@ -215,7 +215,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql, params] = mockClient.query.mock.calls[0];
+            const [sql, params] = mockClient.query.mock.calls[1];
             expect(sql).toContain('COALESCE(cc.name, t.name) ILIKE $3 OR t.vendor ILIKE $3 OR COALESCE(cc.category, t.category) ILIKE $3 OR t.identifier ILIKE $3');
             expect(params).toContain('%gas%');
         });
@@ -233,7 +233,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [sql] = mockClient.query.mock.calls[0];
+            const [sql] = mockClient.query.mock.calls[1];
             expect(sql).toContain('t.is_favorite = true');
         });
 
@@ -251,7 +251,7 @@ describe('Transactions API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            const [, params] = mockClient.query.mock.calls[0];
+            const [, params] = mockClient.query.mock.calls[1];
             // Params order for /api/transactions/index.js: startDate, endDate, limit, offset
             expect(params).toEqual(['2023-01-01', '2023-01-31', 25, 50]);
         });
@@ -329,13 +329,13 @@ describe('Transactions API Endpoint', () => {
             const responseData = mockRes.json.mock.calls[0][0];
 
             // Verify Salary (Income)
-            const salary = responseData.find((t: any) => t.identifier === 'tx1');
+            const salary = responseData.transactions.find((t: any) => t.identifier === 'tx1');
             expect(salary.price).toBe(10000.00);
             expect(salary.price).toBeGreaterThan(0);
             expect(salary.transaction_type).toBe('bank');
 
             // Verify Supermarket (Expense)
-            const expense = responseData.find((t: any) => t.identifier === 'tx2');
+            const expense = responseData.transactions.find((t: any) => t.identifier === 'tx2');
             expect(expense.price).toBe(-500.50);
             expect(expense.price).toBeLessThan(0);
         });
@@ -347,7 +347,7 @@ describe('Transactions API Endpoint', () => {
             await handler(mockReq, mockRes);
 
             const responseData = mockRes.json.mock.calls[0][0];
-            const installmentTx = responseData.find((t: any) => t.identifier === 'tx2');
+            const installmentTx = responseData.transactions.find((t: any) => t.identifier === 'tx2');
 
             expect(installmentTx.installments_number).toBe(2);
             expect(installmentTx.installments_total).toBe(3);
@@ -362,13 +362,13 @@ describe('Transactions API Endpoint', () => {
             const responseData = mockRes.json.mock.calls[0][0];
 
             // Check foreign transaction
-            const foreignTx = responseData.find((t: any) => t.identifier === 'tx3');
+            const foreignTx = responseData.transactions.find((t: any) => t.identifier === 'tx3');
             expect(foreignTx.original_currency).toBe('USD');
             expect(foreignTx.original_amount).toBe(-15.00);
             expect(foreignTx.processed_date).toBe('2023-02-02');
 
             // Check bank transaction date
-            const bankTx = responseData.find((t: any) => t.identifier === 'tx1');
+            const bankTx = responseData.transactions.find((t: any) => t.identifier === 'tx1');
             expect(bankTx.processed_date).toBe('2023-01-15');
         });
 
@@ -439,7 +439,7 @@ describe('Transactions API Endpoint', () => {
             const responseData = mockRes.json.mock.calls[0][0];
 
             // Should include all transactions when no filter
-            expect(responseData).toHaveLength(4);
+            expect(responseData.transactions).toHaveLength(4);
         });
 
         it('should exclude bank transactions from credit card results', async () => {
@@ -459,7 +459,7 @@ describe('Transactions API Endpoint', () => {
 
             // API returns all transactions, filtering happens client-side
             // Just verify the response contains transactions
-            expect(responseData.length).toBeGreaterThan(0);
+            expect(responseData.transactions.length).toBeGreaterThan(0);
         });
 
         it('should filter by bankAccountId when provided', async () => {
@@ -493,7 +493,7 @@ describe('Transactions API Endpoint', () => {
             const responseData = mockRes.json.mock.calls[0][0];
 
             // Find transactions from card ending in 1234 (unassigned)
-            const card1234Txns = responseData.filter((t: any) =>
+            const card1234Txns = responseData.transactions.filter((t: any) =>
                 t.account_number === '1234'
             );
 

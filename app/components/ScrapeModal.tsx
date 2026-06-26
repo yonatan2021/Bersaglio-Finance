@@ -991,8 +991,8 @@ export default function ScrapeModal({ open, onClose, onSuccess, initialConfig }:
                   sx={{
                     minWidth: 48,
                     height: 40,
-                    background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                    '&:hover': { background: 'linear-gradient(135deg, #2563eb, #7c3aed)' },
+                    background: 'linear-gradient(135deg, #2a5070, #1a3354)',
+                    '&:hover': { background: 'linear-gradient(135deg, #1a3354, #0f2440)' },
                     '&:disabled': { opacity: 0.5 }
                   }}
                 >

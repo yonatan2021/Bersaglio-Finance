@@ -405,19 +405,19 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
           alignItems: 'center',
           gap: 1.5,
           background: theme.palette.mode === 'dark'
-            ? 'rgba(99, 102, 241, 0.1)'
-            : 'rgba(99, 102, 241, 0.05)',
+            ? 'rgba(26, 51, 84, 0.1)'
+            : 'rgba(26, 51, 84, 0.05)',
         }}
       >
         <Box sx={{
           width: 40,
           height: 40,
           borderRadius: '12px',
-          background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+          background: 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+          boxShadow: '0 4px 12px rgba(26, 51, 84, 0.2)'
         }}>
           <AutoAwesomeIcon sx={{ color: 'white', fontSize: 24 }} />
         </Box>
@@ -583,7 +583,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
                           ? 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)'
                           : message.status === 'error'
                             ? 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)'
-                            : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                            : 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -670,11 +670,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ screenContext }) => {
                     borderRadius: '12px',
                     flexShrink: 0,
                     background: inputValue.trim() && !isLoading
-                      ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+                      ? 'linear-gradient(135deg, #1a3354 0%, #2a5070 100%)'
                       : theme.palette.action.disabledBackground,
                     color: 'white',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                      background: 'linear-gradient(135deg, #132742 0%, #1a3354 100%)',
                     }
                   }}
                 >

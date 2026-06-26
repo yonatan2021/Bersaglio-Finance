@@ -224,9 +224,9 @@ export async function propagateMerchantName(client, reconciliation) {
     return;
   }
 
-  // Update bank transaction: preserve original name, set cc merchant name
+  // Update bank transaction: preserve original name (only if not already set), set cc merchant name
   await client.query(
-    `UPDATE transactions SET original_name = name, name = $1 WHERE identifier = $2 AND vendor = $3`,
+    `UPDATE transactions SET original_name = COALESCE(original_name, name), name = $1 WHERE identifier = $2 AND vendor = $3`,
     [ccName, bank_identifier, bank_vendor]
   );
 

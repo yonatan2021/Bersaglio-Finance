@@ -594,6 +594,23 @@ export async function insertTransaction(client, transaction, vendor, accountNumb
     throw err;
   }
 
+  // Auto-reconcile debit card transactions with matching bank transactions
+  if (paymentMethod === 'debit') {
+    try {
+      const { autoReconcileDebitTransaction } = await import('../../../utils/reconciliation.js');
+      await autoReconcileDebitTransaction(client, {
+        identifier: txId,
+        vendor,
+        date,
+        name: description || '',
+        price: finalPrice,
+        account_number: accountNumber
+      });
+    } catch (err) {
+      logger.warn({ error: err.message }, '[Scraper] Auto-reconciliation failed for debit txn, continuing');
+    }
+  }
+
   return { success: true, duplicated: false, category: finalCategory, categorySource, ruleMatched: ruleDetails };
 
 }

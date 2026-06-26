@@ -187,10 +187,10 @@ describe('Reconciliation — Debit Auto-Match & Merchant Name Propagation', () =
 
       await propagateMerchantName(mockClient, reconciliation);
 
-      // Verify the UPDATE sets original_name = name and name = cc name
+      // Verify the UPDATE uses COALESCE to protect existing original_name
       const updateCall = mockClient.query.mock.calls[2];
       expect(updateCall[0]).toContain('UPDATE transactions');
-      expect(updateCall[0]).toContain('original_name = name');
+      expect(updateCall[0]).toContain('COALESCE(original_name, name)');
       expect(updateCall[1]).toEqual(['שופרסל', 'bank_50', 'hapoalim']);
     });
 
@@ -214,8 +214,8 @@ describe('Reconciliation — Debit Auto-Match & Merchant Name Propagation', () =
       await propagateMerchantName(mockClient, reconciliation);
 
       const updateSQL = mockClient.query.mock.calls[2][0];
-      // original_name = name preserves the old value before overwriting
-      expect(updateSQL).toContain('original_name = name');
+      // COALESCE(original_name, name) preserves existing original_name on re-propagation
+      expect(updateSQL).toContain('COALESCE(original_name, name)');
       expect(updateSQL).toContain('name = $1');
     });
 

@@ -27,5 +27,8 @@ UPDATE card_vendors SET billing_cycle_start_day = NULL WHERE is_debit = true;
 ALTER TABLE transactions ADD CONSTRAINT chk_payment_method
   CHECK (payment_method IN ('credit', 'debit', 'bank_direct'));
 
+-- Enforce NOT NULL after backfill
+ALTER TABLE transactions ALTER COLUMN payment_method SET NOT NULL;
+
 -- Index for summary queries
 CREATE INDEX IF NOT EXISTS idx_transactions_payment_method ON transactions(payment_method);

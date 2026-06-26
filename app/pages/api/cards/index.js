@@ -77,6 +77,20 @@ export default async function handler(req, res) {
         [last4_digits, card_vendor, card_nickname || null, isDebitBool, startDay]
       );
 
+      const newPaymentMethod = isDebitBool ? 'debit' : 'credit';
+      const updateResult = await client.query(
+        `UPDATE transactions
+         SET payment_method = $1
+         WHERE transaction_type = 'credit_card'
+           AND RIGHT(account_number, 4) = $2
+           AND payment_method != $1`,
+        [newPaymentMethod, last4_digits]
+      );
+
+      if (updateResult.rowCount > 0) {
+        logger.info({ last4_digits, newPaymentMethod, count: updateResult.rowCount }, '[Cards] Synced payment_method for card transactions');
+      }
+
       res.status(200).json(result.rows[0]);
     } else if (req.method === "DELETE") {
       // Delete a card vendor mapping

@@ -112,9 +112,11 @@ describe('Cards API Endpoint', () => {
 
             await handler(mockReq, mockRes);
 
-            expect(mockClient.query).toHaveBeenCalledTimes(1);
+            expect(mockClient.query).toHaveBeenCalledTimes(2);
             expect(mockClient.query.mock.calls[0][0]).toContain('INSERT INTO card_vendors');
             expect(mockClient.query.mock.calls[0][1]).toEqual(['1234', 'visa', 'Main Card', true, 15]);
+            expect(mockClient.query.mock.calls[1][0]).toContain('UPDATE transactions');
+            expect(mockClient.query.mock.calls[1][1]).toEqual(['debit', '1234']);
 
             expect(mockRes.status).toHaveBeenCalledWith(200);
             expect(mockRes.json).toHaveBeenCalled();

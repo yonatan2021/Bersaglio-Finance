@@ -160,9 +160,21 @@ describe('Transaction Reconciliation Engine and APIs', () => {
     it('should update candidates status on POST', async () => {
       mockReq.method = 'POST';
       mockReq.body = { id: 5, status: 'approved' };
+      // UPDATE RETURNING * with full reconciliation fields
       mockClient.query.mockResolvedValueOnce({
-        rows: [{ id: 5, status: 'approved' }]
+        rows: [{
+          id: 5,
+          status: 'approved',
+          bank_identifier: 'bank_1',
+          bank_vendor: 'hapoalim',
+          cc_identifier: 'cc_1',
+          cc_vendor: 'max'
+        }]
       });
+      // propagateMerchantName: fetch cc name
+      mockClient.query.mockResolvedValueOnce({ rows: [{ name: 'שופרסל' }] });
+      // propagateMerchantName: fetch bank name (non-generic, so no update)
+      mockClient.query.mockResolvedValueOnce({ rows: [{ name: 'רמי לוי' }] });
 
       await actionHandler(mockReq, mockRes);
 

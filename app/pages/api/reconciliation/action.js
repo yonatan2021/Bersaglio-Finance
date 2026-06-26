@@ -1,5 +1,6 @@
 import { getDB } from "../db.js";
 import logger from '../../../utils/logger.js';
+import { propagateMerchantName } from '../../../utils/reconciliation.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,6 +33,12 @@ export default async function handler(req, res) {
     }
 
     logger.info({ id, status }, "[Reconciliation] Updated match entry status");
+
+    // Propagate merchant name on approval
+    if (status === 'approved') {
+      await propagateMerchantName(client, result.rows[0]);
+    }
+
     return res.status(200).json({ success: true, match: result.rows[0] });
 
   } catch (err) {

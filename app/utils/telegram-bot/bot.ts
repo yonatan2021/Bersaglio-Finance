@@ -35,6 +35,7 @@ const BOT_COMMANDS = [
     { command: 'triage', description: 'סיווג עסקאות' },
     { command: 'settings', description: 'הגדרות' },
     { command: 'cancel', description: 'ביטול פעולה' },
+    { command: 'whoami', description: 'Debug: הצג Chat ID וסטטוס גישה' },
 ];
 
 export function createBot(token: string, getDB: () => Promise<any>): Bot<BotContext> {
@@ -46,6 +47,31 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
     }));
     bot.use(hydrate());
     bot.use(autoChatAction(bot.api) as any);
+
+    // DEBUG: /whoami responds BEFORE auth so users can see their chat ID.
+    // Remove this command once the whitelist is confirmed working.
+    bot.command('whoami', async (ctx) => {
+        const chatId = String(ctx.chat?.id ?? 'unknown');
+        const { loadMessagingSettings } = await import('../messaging/settings.js');
+        let whitelistStatus = 'לא ניתן לבדוק (שגיאה)';
+        try {
+            const settings = await loadMessagingSettings({ getDB });
+            const allowed = (settings.telegram_to || '')
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter(Boolean);
+            whitelistStatus = allowed.includes(chatId)
+                ? '✅ ב-whitelist'
+                : `❌ לא ב-whitelist (telegram_to = "${settings.telegram_to || 'ריק'}")` ;
+        } catch (e: any) {
+            whitelistStatus = `שגיאה: ${e.message}`;
+        }
+        await ctx.reply(
+            `🔍 Debug Info\n\nChat ID: ${chatId}\nסטטוס: ${whitelistStatus}\n\nהעתק את ה-Chat ID והגדר אותו ב-telegram_to בהגדרות.`,
+            { parse_mode: undefined }
+        );
+    });
+
     bot.use(authMiddleware(getDB));
     bot.use(limit({
         timeFrame: 60,
@@ -97,13 +123,15 @@ export function createBot(token: string, getDB: () => Promise<any>): Bot<BotCont
         const handled = await handleExpenseFlowMessage(ctx, getDB);
         if (handled) return;
 
-        // Search query flow — fixed: actually call search
+        // Search query flow — session guard prevents crash on undefined session
         if (ctx.session?.conversation?.type === 'search_filter' && ctx.session.conversation.step === 'awaiting_query') {
-            const query = ctx.message.text.trim();
-            ctx.session.conversation = undefined;
-            const { handleSearchQuery } = await import('./handlers/transactions');
-            await handleSearchQuery(ctx, getDB, query);
-            return;
+            const query = ctx.message?.text?.trim() ?? '';
+            if (query) {
+                ctx.session.conversation = undefined;
+                const { handleSearchQuery } = await import('./handlers/transactions');
+                await handleSearchQuery(ctx, getDB, query);
+                return;
+            }
         }
 
         await handleAIFallback(ctx, getDB);

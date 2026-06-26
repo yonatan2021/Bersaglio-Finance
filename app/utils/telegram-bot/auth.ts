@@ -21,7 +21,10 @@ export function authMiddleware(getDB: () => Promise<any>) {
 
         const whitelist = await getWhitelist(getDB);
         if (!whitelist.has(chatId)) {
-            logger.warn({ chatId }, '[telegram-bot] Unauthorized access attempt');
+            logger.warn(
+                { chatId, whitelist: Array.from(whitelist), whitelistSize: whitelist.size },
+                '[telegram-bot] Unauthorized access attempt — add chatId to telegram_to setting'
+            );
             return;
         }
         await next();

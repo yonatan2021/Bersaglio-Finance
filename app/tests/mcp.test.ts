@@ -156,7 +156,7 @@ describe('MCP Server API', () => {
 
         expect(postRes.statusCode).toBeLessThan(300);
         expect(initRes.body).toContain('serverInfo');
-        expect(initRes.body).toContain('nudlers');
+        expect(initRes.body).toContain('bersaglio-fin');
 
         // Cleanup
         initReq.emit('close');

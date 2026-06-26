@@ -155,7 +155,120 @@ describe('Budget VS Actual API', () => {
         await handler(mockReq, mockRes);
 
         const actualQuery = mockClient.query.mock.calls[2][0]; // 0=ensure, 1=settings, 2=actuals
-        expect(actualQuery).toContain('date >= $1 AND date <= $2');
+        expect(actualQuery).toContain('t.date >= $1 AND t.date <= $2');
+    });
+
+    it('should use qualified column names to avoid ambiguity with category_types JOIN', async () => {
+        mockReq.query = { billingCycle: '2023-06' };
+
+        mockClient.query
+            .mockResolvedValueOnce({}) // create table
+            .mockResolvedValueOnce({ rows: [{ value: '10' }] }) // billing day
+            .mockResolvedValueOnce({ rows: [] }) // actuals
+            .mockResolvedValueOnce({ rows: [] }) // budgets
+            .mockResolvedValueOnce({ rows: [] }); // total budget
+
+        await handler(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+
+        const actualQuery = mockClient.query.mock.calls[2][0];
+        expect(actualQuery).toContain('FROM transactions t');
+        expect(actualQuery).toContain('LEFT JOIN category_types ct ON t.category');
+        expect(actualQuery).toContain('NULLIF(t.category');
+        expect(actualQuery).toContain('t.transaction_type');
+        expect(actualQuery).toContain('t.name ILIKE');
+    });
+
+    it('should use qualified column names in date range branch', async () => {
+        mockReq.query = { startDate: '2023-06-01', endDate: '2023-06-30' };
+
+        mockClient.query
+            .mockResolvedValueOnce({}) // create table
+            .mockResolvedValueOnce({ rows: [] }) // billing day
+            .mockResolvedValueOnce({ rows: [] }) // actuals
+            .mockResolvedValueOnce({ rows: [] }) // budgets
+            .mockResolvedValueOnce({ rows: [] }); // total budget
+
+        await handler(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+
+        const actualQuery = mockClient.query.mock.calls[2][0];
+        expect(actualQuery).toContain('FROM transactions t');
+        expect(actualQuery).toContain('LEFT JOIN category_types ct ON t.category');
+        expect(actualQuery).toContain('NULLIF(t.category');
+        expect(actualQuery).toContain('t.date >= $1');
+    });
+
+    it('should return 400 for invalid cycle format', async () => {
+        mockReq.query = { billingCycle: 'invalid' };
+
+        mockClient.query
+            .mockResolvedValueOnce({}) // create table
+            .mockResolvedValueOnce({ rows: [{ value: '10' }] }); // billing day
+
+        await handler(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
+            error: expect.stringContaining("Invalid cycle format")
+        }));
+    });
+
+    it('should calculate over-budget correctly', async () => {
+        mockReq.query = { billingCycle: '2023-06' };
+
+        mockClient.query
+            .mockResolvedValueOnce({}) // create table
+            .mockResolvedValueOnce({ rows: [{ value: '10' }] }) // billing day
+            .mockResolvedValueOnce({
+                rows: [{ category: 'Food', actual_spent: '500' }]
+            })
+            .mockResolvedValueOnce({
+                rows: [{ id: 1, category: 'Food', budget_limit: '300' }]
+            })
+            .mockResolvedValueOnce({ rows: [] }); // no total budget
+
+        await handler(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+        const response = mockRes.json.mock.calls[0][0];
+        const food = response.categories.find((c: any) => c.category === 'Food');
+        expect(food.is_over_budget).toBe(true);
+        expect(food.remaining).toBe(-200);
+        expect(food.percent_used).toBe(166.7);
+    });
+
+    it('should include total_spend_budget when set', async () => {
+        mockReq.query = { billingCycle: '2023-06' };
+
+        mockClient.query
+            .mockResolvedValueOnce({}) // create table
+            .mockResolvedValueOnce({ rows: [{ value: '10' }] }) // billing day
+            .mockResolvedValueOnce({
+                rows: [{ category: 'Food', actual_spent: '100' }]
+            })
+            .mockResolvedValueOnce({ rows: [] }) // no category budgets
+            .mockResolvedValueOnce({
+                rows: [{ budget_limit: '5000' }]
+            });
+
+        await handler(mockReq, mockRes);
+
+        const response = mockRes.json.mock.calls[0][0];
+        expect(response.total_spend_budget.is_set).toBe(true);
+        expect(response.total_spend_budget.budget_limit).toBe(5000);
+        expect(response.total_spend_budget.actual_spent).toBe(100);
+    });
+
+    it('should always release database client', async () => {
+        mockReq.query = { billingCycle: '2023-06' };
+        mockClient.query.mockRejectedValue(new Error('DB Error'));
+
+        await handler(mockReq, mockRes);
+
+        expect(mockClient.release).toHaveBeenCalled();
     });
 
     it('should handle database errors', async () => {

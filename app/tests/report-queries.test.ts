@@ -231,7 +231,7 @@ describe('Report Queries — Double-Count Fix + category_type', () => {
             const sql = spendingCall![0];
 
             // Should use category_types join, not hardcoded Bank exclusion
-            expect(sql).toContain('LEFT JOIN category_types ct ON transactions.category = ct.category');
+            expect(sql).toContain('LEFT JOIN category_types ct ON t.category = ct.category');
             expect(sql).toContain("COALESCE(ct.type, 'expense') = 'expense'");
             // Should NOT have the old hardcoded Bank exclusion
             expect(sql).not.toContain("COALESCE(category, '') != 'Bank'");

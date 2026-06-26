@@ -48,70 +48,70 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Invalid cycle format. Use YYYY-MM format" });
       }
 
-      const effectiveMonthSql = getBillingCycleSql(billingStartDay, 'date', 'processed_date');
+      const effectiveMonthSql = getBillingCycleSql(billingStartDay, 't.date', 't.processed_date');
 
       actualSpendingSql = `
         SELECT
-          COALESCE(NULLIF(category, ''), 'Uncategorized') as category,
-          ABS(ROUND(SUM(price))) as actual_spent
-        FROM transactions
-        LEFT JOIN category_types ct ON transactions.category = ct.category
+          COALESCE(NULLIF(t.category, ''), 'Uncategorized') as category,
+          ABS(ROUND(SUM(t.price))) as actual_spent
+        FROM transactions t
+        LEFT JOIN category_types ct ON t.category = ct.category
         WHERE (${effectiveMonthSql}) = $1
           AND COALESCE(ct.type, 'expense') = 'expense'
           AND NOT (
-            transaction_type = 'bank' AND (
-              name ILIKE '%מסטרקרד%' OR
-              name ILIKE '%ישראכרט%' OR
-              name ILIKE '%ויזה%' OR
-              name ILIKE '%כאל%' OR
-              name ILIKE '%אמריקן אקספרס%' OR
-              name ILIKE '%מקס%' OR
-              name ILIKE '%כרטיסי אשראי%'
+            t.transaction_type = 'bank' AND (
+              t.name ILIKE '%מסטרקרד%' OR
+              t.name ILIKE '%ישראכרט%' OR
+              t.name ILIKE '%ויזה%' OR
+              t.name ILIKE '%כאל%' OR
+              t.name ILIKE '%אמריקן אקספרס%' OR
+              t.name ILIKE '%מקס%' OR
+              t.name ILIKE '%כרטיסי אשראי%'
             )
           )
           AND NOT (
-            transaction_type = 'bank'
+            t.transaction_type = 'bank'
             AND EXISTS (
               SELECT 1 FROM transaction_reconciliations tr
-              WHERE tr.bank_identifier = transactions.identifier
-                AND tr.bank_vendor = transactions.vendor
+              WHERE tr.bank_identifier = t.identifier
+                AND tr.bank_vendor = t.vendor
                 AND tr.status = 'approved'
             )
           )
-        GROUP BY COALESCE(NULLIF(category, ''), 'Uncategorized')
+        GROUP BY COALESCE(NULLIF(t.category, ''), 'Uncategorized')
       `;
       actualParams = [cycleValue];
     } else {
       // Use date range (date filter)
       actualSpendingSql = `
         SELECT
-          COALESCE(NULLIF(category, ''), 'Uncategorized') as category,
-          ABS(ROUND(SUM(price))) as actual_spent
-        FROM transactions
-        LEFT JOIN category_types ct ON transactions.category = ct.category
-        WHERE date >= $1 AND date <= $2
+          COALESCE(NULLIF(t.category, ''), 'Uncategorized') as category,
+          ABS(ROUND(SUM(t.price))) as actual_spent
+        FROM transactions t
+        LEFT JOIN category_types ct ON t.category = ct.category
+        WHERE t.date >= $1 AND t.date <= $2
           AND COALESCE(ct.type, 'expense') = 'expense'
           AND NOT (
-            transaction_type = 'bank' AND (
-              name ILIKE '%מסטרקרד%' OR
-              name ILIKE '%ישראכרט%' OR
-              name ILIKE '%ויזה%' OR
-              name ILIKE '%כאל%' OR
-              name ILIKE '%אמריקן אקספרס%' OR
-              name ILIKE '%מקס%' OR
-              name ILIKE '%כרטיסי אשראי%'
+            t.transaction_type = 'bank' AND (
+              t.name ILIKE '%מסטרקרד%' OR
+              t.name ILIKE '%ישראכרט%' OR
+              t.name ILIKE '%ויזה%' OR
+              t.name ILIKE '%כאל%' OR
+              t.name ILIKE '%אמריקן אקספרס%' OR
+              t.name ILIKE '%מקס%' OR
+              t.name ILIKE '%כרטיסי אשראי%'
             )
           )
           AND NOT (
-            transaction_type = 'bank'
+            t.transaction_type = 'bank'
             AND EXISTS (
               SELECT 1 FROM transaction_reconciliations tr
-              WHERE tr.bank_identifier = transactions.identifier
-                AND tr.bank_vendor = transactions.vendor
+              WHERE tr.bank_identifier = t.identifier
+                AND tr.bank_vendor = t.vendor
                 AND tr.status = 'approved'
             )
           )
-        GROUP BY COALESCE(NULLIF(category, ''), 'Uncategorized')
+        GROUP BY COALESCE(NULLIF(t.category, ''), 'Uncategorized')
       `;
       actualParams = [startDate, endDate];
     }

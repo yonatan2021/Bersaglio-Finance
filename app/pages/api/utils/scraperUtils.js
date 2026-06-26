@@ -523,9 +523,9 @@ export async function insertTransaction(client, transaction, vendor, accountNumb
 
   // 5. Build Processed Date
   let finalProcessedDate = processedDate || date;
+  let isCardDebit = false;
   if (!isBank) {
     let cardBillingStartDay = billingCycleStartDay || 10;
-    let isCardDebit = false;
 
     if (accountNumber) {
       const last4 = accountNumber.slice(-4);
@@ -567,10 +567,11 @@ export async function insertTransaction(client, transaction, vendor, accountNumb
 
   // 6. Final Insert
   const transactionType = isBank ? 'bank' : 'credit_card';
+  const paymentMethod = isBank ? 'bank_direct' : (isCardDebit ? 'debit' : 'credit');
   try {
     await client.query(
-      `INSERT INTO transactions (identifier, vendor, date, name, price, category, type, processed_date, original_amount, original_currency, charged_currency, memo, status, installments_number, installments_total, account_number, category_source, rule_matched, transaction_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) ON CONFLICT (identifier, vendor) DO NOTHING`,
-      [txId, vendor, date, description || '', finalPrice, finalCategory, type, finalProcessedDate, originalAmount, originalCurrency, defaultCurrency, memo, status || 'completed', finalInstallmentsNumber, finalInstallmentsTotal, accountNumber, categorySource, ruleDetails, transactionType]
+      `INSERT INTO transactions (identifier, vendor, date, name, price, category, type, processed_date, original_amount, original_currency, charged_currency, memo, status, installments_number, installments_total, account_number, category_source, rule_matched, transaction_type, payment_method) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) ON CONFLICT (identifier, vendor) DO NOTHING`,
+      [txId, vendor, date, description || '', finalPrice, finalCategory, type, finalProcessedDate, originalAmount, originalCurrency, defaultCurrency, memo, status || 'completed', finalInstallmentsNumber, finalInstallmentsTotal, accountNumber, categorySource, ruleDetails, transactionType, paymentMethod]
     );
     if (historyCache) {
       historyCache.idMap.set(txId, {
@@ -580,7 +581,8 @@ export async function insertTransaction(client, transaction, vendor, accountNumb
         category: finalCategory,
         category_source: categorySource,
         installments_number: finalInstallmentsNumber,
-        installments_total: finalInstallmentsTotal
+        installments_total: finalInstallmentsTotal,
+        payment_method: paymentMethod
       });
       historyCache.businessKeys.set(currentKey, { category: finalCategory, category_source: categorySource });
     }
